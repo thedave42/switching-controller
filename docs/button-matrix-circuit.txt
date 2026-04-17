@@ -1,0 +1,119 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              4×3 BUTTON MATRIX CIRCUIT DIAGRAM                             ║
+║              Switching Controller — Arduino Mega 2560                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Pin Assignments
+───────────────
+  Row Pins (INPUT_PULLUP):  ROW0 = Pin 12,  ROW1 = Pin 11,  ROW2 = Pin 10,  ROW3 = Pin 7
+  Col Pins (OUTPUT/scan):   COL0 = Pin 6,   COL1 = Pin 5,   COL2 = Pin 4
+
+Button Numbering (row-major: index = row × 3 + col)
+────────────────
+              COL0    COL1    COL2
+  ROW0:       BTN0    BTN1    BTN2
+  ROW1:       BTN3    BTN4    BTN5
+  ROW2:       BTN6    BTN7    BTN8
+  ROW3:       BTN9    BTN10   BTN11
+
+Legend
+──────
+  ─┤├─   Normally-open momentary push-button switch
+  ─▷|─   Diode (▷ = anode, | = cathode bar)
+  ───    Wire / trace
+
+
+Diode Orientation
+─────────────────
+  Each diode has its ANODE on the switch (row) side and CATHODE on the
+  column line. This blocks reverse current paths that cause ghost keypresses
+  when multiple buttons are held simultaneously.
+
+  Current path on press:  ROW (HIGH via pull-up) → SW → D (anode→cathode) → COL (driven LOW)
+
+
+Schematic
+═════════
+
+            COL0 (Pin 6)              COL1 (Pin 5)              COL2 (Pin 4)
+                 │                         │                         │
+                 │                         │                         │
+ROW0 ──────┬─────┼────────────┬────────────┼────────────┬────────────┤
+(Pin 12)   │     │            │            │            │            │
+          ┤├SW0  │           ┤├SW1         │           ┤├SW2         │
+           │     │            │            │            │            │
+          ▷|D0   │           ▷|D1          │           ▷|D2          │
+           │     │            │            │            │            │
+           └─────┘            └────────────┘            └────────────┘
+                 │                         │                         │
+                 │                         │                         │
+ROW1 ──────┬─────┼────────────┬────────────┼────────────┬────────────┤
+(Pin 11)   │     │            │            │            │            │
+          ┤├SW3  │           ┤├SW4         │           ┤├SW5         │
+           │     │            │            │            │            │
+          ▷|D3   │           ▷|D4          │           ▷|D5          │
+           │     │            │            │            │            │
+           └─────┘            └────────────┘            └────────────┘
+                 │                         │                         │
+                 │                         │                         │
+ROW2 ──────┬─────┼────────────┬────────────┼────────────┬────────────┤
+(Pin 10)   │     │            │            │            │            │
+          ┤├SW6  │           ┤├SW7         │           ┤├SW8         │
+           │     │            │            │            │            │
+          ▷|D6   │           ▷|D7          │           ▷|D8          │
+           │     │            │            │            │            │
+           └─────┘            └────────────┘            └────────────┘
+                 │                         │                         │
+                 │                         │                         │
+ROW3 ──────┬─────┼────────────┬────────────┼────────────┬────────────┤
+(Pin 7)    │     │            │            │            │            │
+          ┤├SW9  │           ┤├SW10        │           ┤├SW11        │
+           │     │            │            │            │            │
+          ▷|D9   │           ▷|D10         │           ▷|D11         │
+           │     │            │            │            │            │
+           └─────┘            └────────────┘            └────────────┘
+                 │                         │                         │
+                 │                         │                         │
+          To Arduino Pin 6          To Arduino Pin 5          To Arduino Pin 4
+
+
+Detail View — Single Cell (e.g. BTN0 at ROW0 × COL0)
+═════════════════════════════════════════════════════════
+
+       ROW0 (Pin 12, INPUT_PULLUP)
+         │
+         │   Internal pull-up to VCC
+         │
+         ├──── ┤├ ──── ▷| ────┤
+               SW0      D0    │
+         (normally open)      │
+                              │
+                        COL0 (Pin 6, OUTPUT)
+                        Driven LOW during scan;
+                        HIGH or Hi-Z otherwise.
+
+  When SW0 is pressed and COL0 is LOW:
+    VCC ─(pullup)─ Pin 12 ─── SW0(closed) ─── D0(fwd biased) ─── Pin 6(LOW)
+    Pin 12 reads LOW → button press detected.
+
+  When SW0 is NOT pressed:
+    Pin 12 stays HIGH via pull-up → no press detected.
+
+
+Scanning Algorithm
+══════════════════
+
+  1. Set all COL pins to INPUT (Hi-Z).
+  2. For each column c = 0..2:
+       a. Set COL[c] to OUTPUT LOW.
+       b. Read ROW0..ROW3:
+            - LOW  → button at (row, c) is pressed.
+            - HIGH → button at (row, c) is not pressed.
+       c. Set COL[c] back to INPUT (Hi-Z).
+  3. Repeat at scan interval (20 ms).
+
+
+Component List (per matrix)
+═══════════════════════════
+  12× Normally-open momentary push-button switches  (SW0–SW11)
+  12× Signal diodes, e.g. 1N4148                    (D0–D11)
