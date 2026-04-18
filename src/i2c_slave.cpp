@@ -36,9 +36,14 @@ static volatile bool i2cReady = false;
 // Count of configured turnouts (cached at setup time)
 static uint8_t configuredCount = 0;
 
+// Debug counters for ISR activity
+static volatile uint32_t i2cReceiveCount = 0;
+static volatile uint32_t i2cRequestCount = 0;
+
 // --- ISR: called when master sends data to this slave ---
 static void receiveEvent(int numBytes)
 {
+  i2cReceiveCount++;
   if (numBytes == 0)
     return;
 
@@ -109,6 +114,7 @@ static void receiveEvent(int numBytes)
 // --- ISR: called when master requests data from this slave ---
 static void requestEvent()
 {
+  i2cRequestCount++;
   switch (outboundFlag)
   {
   case SC_GETINFO:
@@ -166,6 +172,27 @@ void i2cSlaveSetup()
 
   Serial.print(F("I2C slave started at 0x"));
   Serial.println(SC_I2C_ADDRESS, HEX);
+
+  // Dump TWI register state for debugging
+  Serial.print(F("  TWAR=0x"));
+  Serial.print(TWAR, HEX);
+  Serial.print(F(" (expected addr byte: 0x"));
+  Serial.print(SC_I2C_ADDRESS << 1, HEX);
+  Serial.println(F(")"));
+  Serial.print(F("  TWCR=0x"));
+  Serial.print(TWCR, HEX);
+  Serial.print(F(" TWSR=0x"));
+  Serial.println(TWSR, HEX);
+  Serial.print(F("  SDA pin "));
+  Serial.print(I2C_SDA);
+  Serial.print(F(" state="));
+  Serial.print(digitalRead(I2C_SDA));
+  Serial.print(F("  SCL pin "));
+  Serial.print(I2C_SCL);
+  Serial.print(F(" state="));
+  Serial.println(digitalRead(I2C_SCL));
+  Serial.print(F("  Configured turnouts: "));
+  Serial.println(configuredCount);
 }
 
 void processI2CCommands()
@@ -257,4 +284,19 @@ void updateI2CStateSnapshot()
   readallResponse[2] = busy & 0xFF;
   readallResponse[3] = (busy >> 8) & 0xFF;
   interrupts();
+
+  // Periodic debug heartbeat (every 10 seconds)
+  static unsigned long lastDebugMs = 0;
+  if (millis() - lastDebugMs >= 10000)
+  {
+    lastDebugMs = millis();
+    Serial.print(F("I2C heartbeat: rx="));
+    Serial.print(i2cReceiveCount);
+    Serial.print(F(" tx="));
+    Serial.print(i2cRequestCount);
+    Serial.print(F(" SDA="));
+    Serial.print(digitalRead(I2C_SDA));
+    Serial.print(F(" SCL="));
+    Serial.println(digitalRead(I2C_SCL));
+  }
 }
