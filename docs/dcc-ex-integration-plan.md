@@ -55,12 +55,19 @@ The EX-CSB1 is ESP32-based and its I2C bus operates at **3.3V**. The Arduino Meg
 | **Bidirectional I2C Level Shifter** | Convert 3.3V ↔ 5V I2C signals | BSS138-based modules (e.g., Adafruit #757, SparkFun BOB-12009) work well. Must support bidirectional open-drain signaling. |
 | **4× jumper wires** | SDA, SCL, power, ground connections | Keep wires short (< 30cm / 12") to minimize capacitance |
 
-### EX-CSB1 I2C Connection Points (choose one)
+### EX-CSB1 I2C Connection Points
+
+The EX-CSB1 has three I2C connection points listed in its documentation: a **QWiic Connector**, an **OLED I2C Header**, and a **Dual I2C Header**. The I2C accessories section of the EX-CSB1 documentation refers to the latter two as the "I2C x 2" ports for general I2C devices, and the "OLED I2C" port for connecting an OLED display.
 
 | Connector | Pins | Voltage | Notes |
 |-----------|------|---------|-------|
-| **QWiic** | SDA, SCL, 3.3V, GND | 3.3V always | Standard JST-SH 4-pin; check pin order on your cable |
-| **Dual I2C Header** | SDA, SCL, V+, GND | 3.3V | 2×4 pin header; verify pin labels on board silkscreen |
+| **QWiic Connector** | SDA, SCL, 3.3V, GND | 3.3V always | Standard I2C bus connector for daisy-chaining I2C devices. Check pin connection order carefully — discount cables are often wired incorrectly. |
+| **OLED I2C Header** | — | — | Intended for OLED display; may also be used for general I2C devices |
+| **Dual I2C Header** | SDA, SCL, V+, GND | — | 2×4 pin header; general-purpose I2C for sensors, GPIO expanders, etc. |
+
+> **Important:** The EX-CSB1 documentation explicitly states that the QWiic connector voltage is **always 3.3V**. Verify the voltage and pin labels on the other I2C headers by checking the board silkscreen and the pin legend on the bottom of the board before connecting. Always use a bidirectional I2C level shifter when connecting to a 5V device like the Arduino Mega.
+
+There are also 2 solder pad jumpers on the EX-CSB1 labelled "i2c". Refer to the [EX-CSB1 documentation](https://dcc-ex.com/ex-commandstation/rtr-manual__included-esb1.html#i2c-jumper-pads) for their function.
 
 ### Arduino Mega I2C Pins
 
@@ -71,7 +78,7 @@ The EX-CSB1 is ESP32-based and its I2C bus operates at **3.3V**. The Arduino Meg
 
 ### I2C Pull-Up Resistors
 
-The EX-CSB1 has on-board I2C pull-ups (controllable via solder jumper pads). Most level shifter modules include 10kΩ pull-ups on both sides. The Arduino Mega has internal pull-ups enabled by the Wire library. With a single device on the bus, this is typically fine. If you have multiple I2C devices, you may need to remove some pull-ups to keep the combined resistance above 1.7kΩ.
+The I2C bus requires pull-up resistors to operate. Most I2C modules and level shifter boards include built-in 10kΩ pull-ups. The Arduino Mega also has internal pull-ups enabled by the Wire library. Per the [DCC-EX I2C documentation](https://dcc-ex.com/reference/developers/hal-config.html#pull-ups), these built-in pull-ups are sufficient for installations with short bus cables. If you have 6 or more I2C modules on the same bus, you may need to remove pull-ups from some modules to keep the combined resistance above 1.7kΩ (at 5V supply).
 
 ---
 
@@ -247,22 +254,84 @@ private:
 #endif
 ```
 
-### DCC-EX Configuration
+### Installing the HAL Driver on the EX-CSB1
 
-In `myHal.cpp` on the EX-CSB1:
+Adding a new device driver to the EX-CommandStation must be done using the Arduino IDE. No changes to the core EX-CommandStation code are required — the device driver is configured entirely in user-specific configuration files.
+
+The following steps are based on the [DCC-EX documentation for adding a new device](https://dcc-ex.com/reference/developers/hal-config.html#adding-a-new-device).
+
+#### Prerequisites
+
+Make sure you have the Arduino IDE set up with the EX-CommandStation project loaded, following the [Arduino IDE setup instructions](https://dcc-ex.com/ex-commandstation/advanced-setup/installation-options/arduino-ide.html).
+
+#### Step 1: Copy the driver file into the EX-CommandStation source folder
+
+The driver file `IO_SwitchingController.h` must be present in the EX-CommandStation source file folder (the same folder that contains `CommandStation-EX.ino`, `IODevice.h`, and the other `IO_*.h` driver files). Copy it there.
+
+#### Step 2: Create a new tab for `myHal.cpp`
+
+In the Arduino IDE, create a new tab for the device configuration file. Use the drop-down menu button (▼) next to the existing tabs and select **New Tab**.
+
+At the bottom of the Arduino IDE window, a yellow bar will appear asking for the name of the new file. Enter `myHal.cpp` and click **OK** to create the new file.
+
+> **Note:** If you already have a `myHal.cpp` file (for example, you copied the supplied `myHal.cpp_example.txt` and renamed it), open that tab and add the lines in the next step to it. You can also give the file any name you like — for example, `AA_setup.cpp` will appear at the beginning of the list of files in the Arduino IDE.
+
+#### Step 3: Add the configuration commands to `myHal.cpp`
+
+Within the new file, first add the required base include and the `halSetup()` function definition, then add the `#include` for the Switching Controller driver and the `create()` call inside the function body.
+
+The complete file should contain:
 
 ```cpp
+#include "IODevice.h"
 #include "IO_SwitchingController.h"
 
 void halSetup() {
-  // 12 VPINs starting at 800, I2C address 0x65
+  // Switching Controller: 12 turnout VPINs starting at 800, I2C address 0x65
   SwitchingController::create(800, 12, 0x65);
 }
 ```
 
-In `mySetup.h` or via serial commands, define the turnouts:
+The `#include "IO_SwitchingController.h"` line makes the driver software known to the compiler. The `SwitchingController::create(800, 12, 0x65)` line instructs the HAL to create a driver instance for the Switching Controller on I2C address 0x65, and allocates 12 virtual pins (VPINs 800–811) to interface with its 12 turnouts.
+
+Save the file.
+
+#### Step 4: Upload the new version of the software
+
+Upload the code to the EX-CSB1 as you would during the standard [Arduino IDE setup](https://dcc-ex.com/ex-commandstation/advanced-setup/installation-options/arduino-ide.html#upload-the-software). Restart the Command Station and the new device will be configured at startup.
+
+#### Step 5: Check the driver
+
+Start the Arduino IDE Serial Monitor and set its speed to **115200 baud**. Enter the following command:
 
 ```
+<D HAL SHOW>
+```
+
+You will see a list of the configured devices, and among them should be the Switching Controller:
+
+```
+<* Arduino Vpins:2-69 *>
+<* PCA9685 I2C:x40 Configured on Vpins:100-115 *>
+<* PCA9685 I2C:x41 Configured on Vpins:116-131 *>
+<* MCP23017 I2C:x20 Configured on Vpins:164-179 *>
+<* MCP23017 I2C:x21 Configured on Vpins:180-195 *>
+<* SwitchCtrl I2C:x65 v1.0.0 Vpins:800-811 *>        <<== New device
+```
+
+If the Arduino Mega is not connected or not powered, the device will show `OFFLINE`. The driver retries automatically every 5 seconds, so connecting the Mega later will bring the device online without restarting the EX-CSB1.
+
+#### Step 6: Define the turnouts
+
+The turnouts can be defined by creating a `mySetup.h` file (a new tab in the Arduino IDE, same process as Step 2), or by entering the commands interactively through the Serial Monitor.
+
+**Option A — `mySetup.h` file (persistent across rebuilds):**
+
+```cpp
+// mySetup.h — Turnout definitions for Switching Controller
+// Each SETUP() command maps a DCC-EX turnout ID to a VPIN.
+// VPIN 800 = turnout array index 0 (T01), 801 = index 1 (T02), etc.
+
 SETUP("<T 1 VPIN 800>");    // T01 → VPIN 800 → turnout index 0
 SETUP("<T 2 VPIN 801>");    // T02 → VPIN 801 → turnout index 1
 SETUP("<T 3 VPIN 802>");    // T03 → VPIN 802 → turnout index 2
@@ -277,13 +346,53 @@ SETUP("<T 11 VPIN 810>");   // T11 → VPIN 810 → turnout index 10
 SETUP("<T 12 VPIN 811>");   // T12 → VPIN 811 → turnout index 11
 ```
 
-Then from any DCC-EX throttle or JMRI:
+If using `mySetup.h`, upload the software again for the changes to take effect.
+
+**Option B — Serial Monitor (interactive, saved to EEPROM):**
+
+Enter each turnout definition command in the Serial Monitor:
 
 ```
-<T 1 T>     // Throw turnout T01
-<T 1 C>     // Close turnout T01
-<JT>        // List all turnout states
+<T 1 VPIN 800>
+<T 2 VPIN 801>
+<T 3 VPIN 802>
+<T 4 VPIN 803>
+<T 5 VPIN 804>
+<T 6 VPIN 805>
+<T 7 VPIN 806>
+<T 8 VPIN 807>
+<T 9 VPIN 808>
+<T 10 VPIN 809>
+<T 11 VPIN 810>
+<T 12 VPIN 811>
 ```
+
+Then save the definitions to EEPROM so they persist across restarts:
+
+```
+<E>
+```
+
+#### Step 7: Use the turnouts
+
+The turnouts can now be controlled from the Serial Monitor, any connected throttle app (Engine Driver, wiThrottle), JMRI, or EXRAIL automations:
+
+**Serial Monitor / API commands:**
+```
+<T 1 T>     // Throw turnout T01 (set to TURN)
+<T 1 C>     // Close turnout T01 (set to STRAIGHT)
+<JT>        // List all turnout IDs
+<JT 1>      // Get state of turnout 1
+```
+
+**EXRAIL automation (myAutomation.h):**
+```
+THROW(1)    // Throw turnout T01
+CLOSE(1)    // Close turnout T01
+```
+
+**Throttle apps:**
+Turnouts appear automatically in the turnout list of any connected throttle.
 
 ---
 
