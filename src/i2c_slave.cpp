@@ -171,68 +171,70 @@ void i2cSlaveSetup()
 
 void processI2CCommands()
 {
-  while (i2cCmdHead != i2cCmdTail)
+  // Process at most one command per loop iteration to avoid stalling
+  // the main loop with multiple FastLED.show() + LCD writes
+  if (i2cCmdHead == i2cCmdTail)
+    return;
+
+  I2CWriteCmd cmd;
+  noInterrupts();
+  cmd.pin = i2cCmdQueue[i2cCmdTail].pin;
+  cmd.state = i2cCmdQueue[i2cCmdTail].state;
+  i2cCmdTail = (i2cCmdTail + 1) % I2C_CMD_QUEUE_SIZE;
+  interrupts();
+
+  if (cmd.pin >= NUM_BUTTONS || !turnouts[cmd.pin].configured)
+    return;
+
+  Turnout &t = turnouts[cmd.pin];
+
+  // Idempotent: skip if already in requested state
+  if ((cmd.state == SC_STATE_STRAIGHT && t.state == STRAIGHT) ||
+      (cmd.state == SC_STATE_TURN && t.state == TURN))
+    return;
+
+  // Skip if motor is busy
+  if (t.motorActive)
+    return;
+
+  // Skip if in setup mode
+  if (appMode != MODE_NORMAL)
+    return;
+
+  // Drive motor to requested state
+  if (cmd.state == SC_STATE_TURN)
   {
-    I2CWriteCmd cmd;
-    noInterrupts();
-    cmd.pin = i2cCmdQueue[i2cCmdTail].pin;
-    cmd.state = i2cCmdQueue[i2cCmdTail].state;
-    i2cCmdTail = (i2cCmdTail + 1) % I2C_CMD_QUEUE_SIZE;
-    interrupts();
-
-    if (cmd.pin >= NUM_BUTTONS || !turnouts[cmd.pin].configured)
-      continue;
-
-    Turnout &t = turnouts[cmd.pin];
-
-    // Idempotent: skip if already in requested state
-    if ((cmd.state == SC_STATE_STRAIGHT && t.state == STRAIGHT) ||
-        (cmd.state == SC_STATE_TURN && t.state == TURN))
-      continue;
-
-    // Skip if motor is busy
-    if (t.motorActive)
-      continue;
-
-    // Skip if in setup mode
-    if (appMode != MODE_NORMAL)
-      continue;
-
-    // Drive motor to requested state
-    if (cmd.state == SC_STATE_TURN)
-    {
-      driveTurn(t);
-      t.state = TURN;
-    }
-    else
-    {
-      driveStraight(t);
-      t.state = STRAIGHT;
-    }
-
-    renderAllTurnoutLeds();
-    t.pendingEepromSave = true;
-    motorActivate(t);
-
-    // LCD feedback
-    uint8_t tIdx = cmd.pin;
-    char labelBuf[8];
-    const char *label = getTurnoutLabel(tIdx, labelBuf, sizeof(labelBuf));
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(F("DCC:"));
-    lcd.print(label);
-    lcd.setCursor(0, 1);
-    lcd.print(F("-> "));
-    lcd.print(t.state == STRAIGHT ? F("STRAIGHT") : F("TURN"));
-    lcdMessageMs = millis();
-    lcdShowingAction = true;
-
-    Serial.print(F("I2C: turnout "));
-    Serial.print(tIdx);
-    Serial.print(F(" -> "));
-    Serial.println(t.state == STRAIGHT ? F("STRAIGHT") : F("TURN"));
+    driveTurn(t);
+    t.state = TURN;
   }
+  else
+  {
+    driveStraight(t);
+    t.state = STRAIGHT;
+  }
+
+  renderAllTurnoutLeds();
+  t.pendingEepromSave = true;
+  motorActivate(t);
+
+  // LCD feedback
+  uint8_t tIdx = cmd.pin;
+  char labelBuf[8];
+  const char *label = getTurnoutLabel(tIdx, labelBuf, sizeof(labelBuf));
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(F("DCC:"));
+  lcd.print(label);
+  lcd.setCursor(0, 1);
+  lcd.print(F("-> "));
+  lcd.print(t.state == STRAIGHT ? F("STRAIGHT") : F("TURN"));
+  lcdMessageMs = millis();
+  lcdShowingAction = true;
+
+  Serial.print(F("I2C: turnout "));
+  Serial.print(tIdx);
+  Serial.print(F(" -> "));
+  Serial.println(t.state == STRAIGHT ? F("STRAIGHT") : F("TURN"));
 }
 
 void updateI2CStateSnapshot()

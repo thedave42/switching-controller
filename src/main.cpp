@@ -934,6 +934,10 @@ void loop()
     handleEncoderLongPress();
   }
 
+  // --- Process one I2C command from DCC-EX per loop iteration ---
+  processI2CCommands();
+  updateI2CStateSnapshot();
+
   // --- Non-blocking motor shutoff + EEPROM state save ---
   for (uint8_t i = 0; i < NUM_BUTTONS; i++)
   {
@@ -993,10 +997,6 @@ void loop()
   {
     lcdShowIdle();
   }
-
-  // --- Process I2C commands from DCC-EX ---
-  processI2CCommands();
-  updateI2CStateSnapshot();
 }
 
 void switchOff(int in1, int in2)
