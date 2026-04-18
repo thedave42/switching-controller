@@ -568,7 +568,39 @@ void processI2CCommands() {
 
 ---
 
-## 7. Implementation Todos
+## 7. Repository Structure — Code Separation
+
+The Switching Controller firmware (Arduino Mega) and the DCC-EX HAL driver (EX-CSB1) are installed on **different devices** and must be kept separate in the repository. The `i2c_protocol.h` header defines the shared protocol constants and is the only file referenced by both sides.
+
+```
+switching-controller/
+├── src/                          ← Arduino Mega firmware (PlatformIO)
+│   ├── main.cpp
+│   └── i2c_slave.cpp
+├── include/
+│   ├── pinLayout.h
+│   ├── i2c_protocol.h            ← Shared protocol constants (referenced by both sides)
+│   └── i2c_slave.h
+├── dcc-ex/                       ← DCC-EX EX-CSB1 files (copied to CommandStation-EX)
+│   ├── IO_SwitchingController.h  ← HAL driver (copy to EX-CommandStation source folder)
+│   ├── myHal.cpp.example         ← Example halSetup() configuration
+│   └── mySetup.h.example         ← Example turnout definitions
+├── docs/
+│   └── dcc-ex-integration-plan.md
+├── platformio.ini
+└── ...
+```
+
+**Key points:**
+
+- **`src/` and `include/`** — These are built and uploaded to the Arduino Mega via PlatformIO. They contain the I2C slave handler and all existing Switching Controller firmware.
+- **`dcc-ex/`** — This directory holds files that must be **manually copied** into the EX-CommandStation source folder on your computer before building and uploading to the EX-CSB1 via the Arduino IDE. These files are NOT built by PlatformIO and are NOT part of the Mega firmware.
+- **`include/i2c_protocol.h`** — Defines the shared command codes, response codes, and I2C address. The `dcc-ex/IO_SwitchingController.h` file duplicates these constants internally (since it cannot `#include` a file from this repo when it's placed in the EX-CommandStation source tree). If you change a protocol constant, you must update it in both places.
+- **`.example` suffix** — The `myHal.cpp.example` and `mySetup.h.example` files are templates. The user renames/copies them when setting up their EX-CSB1 (the actual `myHal.cpp` and `mySetup.h` live in the EX-CommandStation source folder, not in this repo).
+
+---
+
+## 8. Implementation Todos
 
 ### Todo 1: Create shared protocol header (`i2c-protocol`)
 
@@ -598,19 +630,20 @@ Create `include/i2c_slave.h` and `src/i2c_slave.cpp` with:
 
 ### Todo 4: Create DCC-EX HAL driver (`hal-driver`)
 
-Create `IO_SwitchingController.h` for the EX-CommandStation:
+Create `dcc-ex/IO_SwitchingController.h` for the EX-CommandStation:
 
 - IODevice subclass with `create()`, `_begin()`, `_loop()`, `_write()`, `_read()`, `_display()`
 - Non-blocking polling in `_loop()`
 - Blocking write in `_write()`
 - Retry logic with backoff
+- Protocol constants duplicated internally (cannot #include from the Mega side)
 - Documentation header with usage examples
 
 **Depends on:** `i2c-protocol`
 
 ### Todo 5: Create example DCC-EX configuration files (`dcc-ex-config`)
 
-Create example `myHal.cpp` and `mySetup.h` files showing how to configure the HAL driver and define the 12 turnouts.
+Create `dcc-ex/myHal.cpp.example` and `dcc-ex/mySetup.h.example` showing how to configure the HAL driver and define the 12 turnouts. These are templates the user copies into their EX-CommandStation source folder.
 
 **Depends on:** `hal-driver`
 
