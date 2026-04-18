@@ -60,6 +60,7 @@ private:
     SC_READALL  = 0xA3,
     SC_RDY      = 0xA9,
     SC_ERR      = 0xAF,
+    SC_PROTOCOL_VER = 1,
   };
 
   SwitchingController(VPIN firstVpin, int nPins, I2CAddress i2cAddress) {
@@ -86,6 +87,10 @@ private:
       uint8_t status = I2CManager.read(_I2CAddress, receiveBuffer, 4, commandBuffer, 1);
       if (status == I2C_STATUS_OK && receiveBuffer[0] > 0) {
         _numConfigured = receiveBuffer[0];
+        if (receiveBuffer[1] != SC_PROTOCOL_VER) {
+          DIAG(F("SwitchCtrl I2C:%s protocol mismatch: expected %d, got %d"),
+               _I2CAddress.toString(), SC_PROTOCOL_VER, receiveBuffer[1]);
+        }
         ready = true;
         break;
       }
@@ -152,6 +157,7 @@ private:
       if (_i2crb.status == I2C_STATUS_OK) {
         _statesMask = _pollResponseBuffer[0] | ((uint16_t)_pollResponseBuffer[1] << 8);
         _busyMask = _pollResponseBuffer[2] | ((uint16_t)_pollResponseBuffer[3] << 8);
+        _errorCount = 0;
       } else {
         _errorCount++;
         if (_errorCount > 10) {
@@ -168,7 +174,6 @@ private:
       I2CManager.read(_I2CAddress, _pollResponseBuffer, 4, _pollCommandBuffer, 1, &_i2crb);
       _lastPollMicros = currentMicros;
       _pollPending = true;
-      _errorCount = 0;
     }
   }
 

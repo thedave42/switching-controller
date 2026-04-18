@@ -17,7 +17,6 @@ extern void lcdShowIdle();
 extern LiquidCrystal lcd;
 extern unsigned long lcdMessageMs;
 extern bool lcdShowingAction;
-extern const unsigned long LCD_MESSAGE_MS;
 extern const char *getTurnoutLabel(uint8_t index, char *buf, uint8_t bufSize);
 
 // --- I2C state ---
@@ -44,7 +43,7 @@ static void receiveEvent(int numBytes)
     return;
 
   uint8_t buffer[4];
-  uint8_t len = min((uint8_t)numBytes, (uint8_t)sizeof(buffer));
+  uint8_t len = (numBytes < (int)sizeof(buffer)) ? (uint8_t)numBytes : (uint8_t)sizeof(buffer);
   for (uint8_t i = 0; i < len; i++)
     buffer[i] = Wire.read();
   // Drain any excess bytes
