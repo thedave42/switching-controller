@@ -1,3 +1,5 @@
+ets Jul 29 2019 12:21:46
+
 rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
 configsip: 0, SPIWP:0xee
 clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
@@ -67,14 +69,35 @@ entry 0x400805f0
 <p0 B>
 <p0>
 <@ 0 2 "PWR Off">
-<@ 0 3 "Free RAM=225508b">
+<@ 0 3 "Free RAM=225488b">
 <= A MAIN>
 <p0 A>
 <p0 B>
 <p0>
 <@ 0 2 "PWR Off">
+<@ 0 3 "Free RAM=225464b">
 <= B PROG>
 <p0 A>
 <p0 B>
 <p0>
 <@ 0 2 "PWR Off">
+<@ 0 3 "Free RAM=224696b">
+<@ 0 3 "Free RAM=223540b">
+<@ 0 3 "Free RAM=222868b">
+<@ 0 3 "Free RAM=222364b">
+<* New client 0, 192.168.4.2:33213 *>
+<@ 0 3 "Free RAM=219428b">
+<p0 A>
+<p0 B>
+<p0>
+<@ 0 2 "PWR Off">
+<@ 0 3 "Free RAM=217520b">
+<* Arduino Vpins:2-39 *>
+<* SwitchCtrl I2C:0x65 v0.0.0 Vpins:800-811 OFFLINE *>
+<* PCA9685 I2C:0x40 Configured on Vpins:100-115 OFFLINE *>
+<* PCA9685 I2C:0x41 Configured on Vpins:116-131 OFFLINE *>
+<* MCP23017 I2C:0x20 Configured on Vpins:164-179 OFFLINE *>
+<* MCP23017 I2C:0x21 Configured on Vpins:180-195 OFFLINE *>
+<H 1 1>
+<H 1 0>
+<H 1 1>
