@@ -6,13 +6,14 @@
 #include "ButtonMatrix.h"
 
 #include "pinLayout.h"
+#include "turnout_types.h"
+#include "i2c_slave.h"
 
 using namespace RSys;
 
 // --- Constants ---
 const unsigned long MOTOR_DURATION_MS = 500;                     // How long to energize the turnout motor (ms)
 const unsigned long CLICK_COOLDOWN_MS = MOTOR_DURATION_MS + 250; // Ignore repeated clicks within this window (ms)
-const uint8_t NUM_BUTTONS = BTN_COLS * BTN_ROWS;
 const int brightness = 16; // 0-255
 const unsigned long LCD_MESSAGE_MS = 3000;// How long to show action on LCD before reverting to idle
 const unsigned long ENC_LONG_PRESS_MS = 3000; // Encoder switch long-press threshold
@@ -29,49 +30,8 @@ const uint8_t EEPROM_ADDR_DATA = 2;          // 4 bytes per turnout × 12 = 48 b
 const uint8_t EEPROM_BYTES_PER_TURNOUT = 4;  // state, inLedIdx, straightLedIdx, turnLedIdx
 const uint8_t EEPROM_ADDR_CRC = EEPROM_ADDR_DATA + (EEPROM_BYTES_PER_TURNOUT * 12); // byte 50
 
-// --- Enums ---
-enum SwitchState
-{
-  STRAIGHT,
-  TURN
-};
-
-enum AppMode
-{
-  MODE_NORMAL,
-  MODE_SETUP
-};
-
-enum SetupField
-{
-  SETUP_IDLE,
-  SETUP_DIRECTION,
-  SETUP_IN_LED,
-  SETUP_STRAIGHT_LED,
-  SETUP_TURN_LED
-};
-
 // --- LED array ---
 CRGB leds[NUM_LEDS];
-
-// --- Turnout configuration ---
-struct Turnout
-{
-  int buttonIndex;
-  int in1;
-  int in2;
-  SwitchState state;
-  uint8_t inLedIdx;
-  uint8_t straightLedIdx;
-  uint8_t turnLedIdx;
-  bool configured;                   // Has this turnout been defined?
-  bool reversed;                     // Motor polarity reversed (in1/in2 meaning swapped)
-  bool motorActive;           // Is the motor currently energized?
-  unsigned long motorStartMs; // When was the motor activated?
-  unsigned long lastClickMs;         // When was the last click registered?
-  bool pendingEepromSave;            // Save state to EEPROM once motor completes
-  const char *name;                  // Display label (nullptr = use "T<index>")
-};
 
 Turnout turnouts[NUM_BUTTONS]; // Array to hold the turnout configurations for each button
 
@@ -882,6 +842,9 @@ void setup()
   // Set LEDs to match loaded state
   renderAllTurnoutLeds();
 
+  // Initialize I2C slave AFTER all motors are positioned
+  i2cSlaveSetup();
+
   // Initialize LCD
   lcd.begin(16, 2);
   uint8_t configuredCount = 0;
@@ -1030,6 +993,10 @@ void loop()
   {
     lcdShowIdle();
   }
+
+  // --- Process I2C commands from DCC-EX ---
+  processI2CCommands();
+  updateI2CStateSnapshot();
 }
 
 void switchOff(int in1, int in2)
