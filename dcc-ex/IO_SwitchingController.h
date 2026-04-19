@@ -198,7 +198,11 @@ private:
     int pin = vpin - _firstVpin;
     if (pin < 0 || pin >= _nPins) return;
 
-    uint8_t commandBuffer[3] = {SC_WRITE, (uint8_t)pin, (uint8_t)(value ? 1 : 0)};
+    // DCC-EX passes value=1 for close (STRAIGHT) and value=0 for throw (TURN).
+    // Our protocol uses SC_STATE_STRAIGHT=0 and SC_STATE_TURN=1.
+    // Invert: close(1) -> STRAIGHT(0), throw(0) -> TURN(1)
+    uint8_t scState = value ? 0 : 1;
+    uint8_t commandBuffer[3] = {SC_WRITE, (uint8_t)pin, scState};
     uint8_t responseBuffer[1];
 
     // Retry up to 3 times with 10ms backoff
@@ -206,11 +210,11 @@ private:
       uint8_t status = I2CManager.read(_I2CAddress, responseBuffer, 1, commandBuffer, 3);
       if (status == I2C_STATUS_OK) {
         if (responseBuffer[0] == SC_RDY) {
-          // Update cached state
-          if (value)
-            _statesMask |= (1 << pin);
+          // Update cached state to match what the Mega now holds
+          if (scState)
+            _statesMask |= (1 << pin);   // TURN = bit set
           else
-            _statesMask &= ~(1 << pin);
+            _statesMask &= ~(1 << pin);  // STRAIGHT = bit clear
           return;
         } else {
           return; // Device rejected the command (busy, invalid pin)
