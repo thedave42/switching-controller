@@ -43,6 +43,7 @@
 #include "IODevice.h"
 #include "I2CManager.h"
 #include "DIAG.h"
+#include "Turnouts.h"
 
 class SwitchingController : public IODevice {
 public:
@@ -155,9 +156,24 @@ private:
         return;
 
       if (_i2crb.status == I2C_STATUS_OK) {
-        _statesMask = _pollResponseBuffer[0] | ((uint16_t)_pollResponseBuffer[1] << 8);
+        uint16_t newStates = _pollResponseBuffer[0] | ((uint16_t)_pollResponseBuffer[1] << 8);
         _busyMask = _pollResponseBuffer[2] | ((uint16_t)_pollResponseBuffer[3] << 8);
         _errorCount = 0;
+
+        // Detect state changes from local button presses on the Mega
+        // and sync DCC-EX turnout objects so throttle apps stay in sync.
+        // Assumes turnout IDs match the PIN_TURNOUT config: ID = pin + 1
+        // (pin 0 = ID 1, pin 1 = ID 2, etc.)
+        if (newStates != _statesMask) {
+          uint16_t changed = newStates ^ _statesMask;
+          for (int pin = 0; pin < _nPins; pin++) {
+            if (changed & (1 << pin)) {
+              bool closed = !(newStates & (1 << pin)); // 0=STRAIGHT=closed, 1=TURN=thrown
+              Turnout::setClosedStateOnly(pin + 1, closed);
+            }
+          }
+          _statesMask = newStates;
+        }
       } else {
         _errorCount++;
         if (_errorCount > 10) {
