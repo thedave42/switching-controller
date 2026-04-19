@@ -787,18 +787,18 @@ void setup()
 
   // Define turnouts with hardcoded defaults
   // (index, buttonIndex, in1, in2, inLed, straightLed, turnLed, name)
-  configureTurnout(0,  5,  T0_IN1,  T0_IN2,   0,  2,  1, "T01");
-  configureTurnout(1,  0,  T1_IN1,  T1_IN2,   3,  5,  4, "T02");
-  configureTurnout(2,  4,  T2_IN1,  T2_IN2,   6,  8,  7, "T03");
-  configureTurnout(3,  1,  T3_IN1,  T3_IN2,   9, 11, 10, "T04");
-  configureTurnout(4,  6,  T4_IN1,  T4_IN2,  12, 14, 13, "T05");
-  configureTurnout(5,  3,  T5_IN1,  T5_IN2,  15, 17, 16, "T06");
-  configureTurnout(6,  2,  T6_IN1,  T6_IN2,  18, 20, 19, "T07");
-  configureTurnout(7,  9,  T7_IN1,  T7_IN2,  21, 23, 22, "T08");
-  configureTurnout(8, 10,  T8_IN1,  T8_IN2,  24, 26, 25, "T09");
-  configureTurnout(9,  8,  T9_IN1,  T9_IN2,  27, 29, 28, "T10");
-  configureTurnout(10, 11, T10_IN1, T10_IN2,  30, 32, 31, "T11");
-  configureTurnout(11,  7, T11_IN1, T11_IN2,  33, 35, 34, "T12");
+  configureTurnout(0,  5,  T0_IN1,  T0_IN2,   0,  2,  1, "Industry Entry");
+  configureTurnout(1,  0,  T1_IN1,  T1_IN2,   3,  5,  4, "Industry Exit");
+  configureTurnout(2,  4,  T2_IN1,  T2_IN2,   6,  8,  7, "Siding Entry");
+  configureTurnout(3,  1,  T3_IN1,  T3_IN2,   9, 11, 10, "Siding Exit");
+  configureTurnout(4,  6,  T4_IN1,  T4_IN2,  12, 14, 13, "Industry Warehouse");
+  configureTurnout(5,  3,  T5_IN1,  T5_IN2,  15, 17, 16, "Runaround Entry");
+  configureTurnout(6,  2,  T6_IN1,  T6_IN2,  18, 20, 19, "Runaround Exit");
+  configureTurnout(7,  9,  T7_IN1,  T7_IN2,  21, 23, 22, "Staging 2 & 3");
+  configureTurnout(8, 10,  T8_IN1,  T8_IN2,  24, 26, 25, "Staging 2/3 Entry");
+  configureTurnout(9,  8,  T9_IN1,  T9_IN2,  27, 29, 28, "Yard Entry");
+  configureTurnout(10, 11, T10_IN1, T10_IN2,  30, 32, 31, "Yard Exit");
+  configureTurnout(11,  7, T11_IN1, T11_IN2,  33, 35, 34, "Staging 1");
 
   // Load EEPROM config BEFORE motor initialization
   // This overrides hardcoded state and LED indices with saved values
