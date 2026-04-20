@@ -47,7 +47,8 @@ static void receiveEvent(int numBytes)
 {
 #ifdef DEBUG_I2C
   i2cReceiveCount++;
-#endif  if (numBytes == 0)
+#endif
+  if (numBytes == 0)
     return;
 
   uint8_t buffer[4];
