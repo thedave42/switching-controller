@@ -787,6 +787,19 @@ void setup()
 
   // Define turnouts with hardcoded defaults
   // (index, buttonIndex, in1, in2, inLed, straightLed, turnLed, name)
+  // Turnout 0 state=STRAIGHT btn=5 LEDs(in=15 st=17 tn=16) reversed=Y
+  // Turnout 1 state=STRAIGHT btn=0 LEDs(in=0 st=2 tn=1) reversed=N
+  // Turnout 2 state=STRAIGHT btn=4 LEDs(in=12 st=14 tn=13) reversed=Y
+  // Turnout 3 state=STRAIGHT btn=1 LEDs(in=3 st=5 tn=4) reversed=N
+  // Turnout 4 state=STRAIGHT btn=6 LEDs(in=18 st=20 tn=19) reversed=Y
+  // Turnout 5 state=STRAIGHT btn=3 LEDs(in=9 st=11 tn=10) reversed=Y
+  // Turnout 6 state=TURN btn=2 LEDs(in=8 st=6 tn=7) reversed=N
+  // Turnout 7 state=STRAIGHT btn=9 LEDs(in=23 st=21 tn=22) reversed=N
+  // Turnout 8 state=TURN btn=10 LEDs(in=24 st=26 tn=25) reversed=Y
+  // Turnout 9 state=TURN btn=8 LEDs(in=30 st=32 tn=31) reversed=N
+  // Turnout 10 state=TURN btn=11 LEDs(in=35 st=33 tn=34) reversed=Y
+  // Turnout 11 state=TURN btn=7 LEDs(in=27 st=29 tn=28) reversed=N
+
   configureTurnout(0,  5,  T0_IN1,  T0_IN2,   0,  2,  1, "Industry Entry");
   configureTurnout(1,  0,  T1_IN1,  T1_IN2,   3,  5,  4, "Industry Exit");
   configureTurnout(2,  4,  T2_IN1,  T2_IN2,   6,  8,  7, "Siding Entry");
