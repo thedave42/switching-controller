@@ -143,7 +143,7 @@ Turnout state and LED indices are persisted across power cycles using an externa
 5. Motor initialization uses the loaded state (not always STRAIGHT)
 
 **Write strategy:**
-- `framWrite8()` is called unconditionally — FRAM has virtually unlimited write endurance (~10¹³ cycles), so there is no read-before-write optimization as there was with EEPROM.
+- `framWrite8()` is called unconditionally — FRAM has virtually unlimited write endurance (~10¹³ cycles), so there is no need for a read-before-write optimization.
 - State saved after motor completion, not on button press
 - LED config saved immediately when user confirms in setup mode
 - All `storageSave*` / `storageLoad` calls short-circuit to a no-op when `!framAvailable`.
