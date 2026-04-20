@@ -196,8 +196,8 @@ Pin assignments are defined in `include/pinLayout.h`.
    │                  │                     │ A0  ── GND      │
    │                  │                     │ A1  ── GND      │
    │                  │                     │ A2  ── GND      │
-   │  Pin 20 (SDA) ◄──┼── reserved for DCC-EX (hardware Wire) │
-   │  Pin 21 (SCL) ◄──┼── reserved for DCC-EX (hardware Wire) │
+   │  Pin 20 (SDA) ◄──┼── DCC-EX I2C slave (hw Wire, see §7)  │
+   │  Pin 21 (SCL) ◄──┼── DCC-EX I2C slave (hw Wire, see §7)  │
    └──────────────────┘                     └─────────────────┘
 
   I2C address: 0b1010_A2A1A0 = 0x50 with A0/A1/A2 tied LOW.
@@ -214,7 +214,58 @@ Pin assignments are defined in `include/pinLayout.h`.
   often floats HIGH, so tying it to GND is the portable choice.
 
 
+═══════════════════════════════════════════════════════════════════════════════════
+ 7. DCC-EX I2C BUS (hardware TWI via TCA9548A multiplexer)
+═══════════════════════════════════════════════════════════════════════════════════
 
+  The switching controller is an I2C slave (address 0x65) on the DCC-EX
+  command station's I2C bus. The EX-CSB1 uses a TCA9548A 1-to-8 I2C
+  multiplexer so it can address many I2C devices; the switching controller
+  connects to one downstream channel. A bidirectional level shifter
+  translates between the EX-CSB1's 3.3V bus and the Mega's 5V TWI.
+
+  The OLED display remains on the EX-CSB1's J111 header (upstream side of
+  the TCA9548A) and is unaffected by the multiplexer.
+
+  ┌──────────────┐   QWiic    ┌────────────┐  CH0   ┌───────────┐         ┌───────────┐
+  │   EX-CSB1    │   (3.3V)   │  TCA9548A  │ (3.3V) │ Bi-dir    │  (5V)   │ Arduino   │
+  │              │            │  I2C Mux   │        │ Level     │         │ Mega 2560 │
+  │  GPIO16 SDA ─┼──── SDA ───┤ SDA    SD0 ├── SDA ─┤ A1    B1 ─┼── SDA ──┤ Pin 20    │
+  │  GPIO15 SCL ─┼──── SCL ───┤ SCL    SC0 ├── SCL ─┤ A2    B2 ─┼── SCL ──┤ Pin 21    │
+  │  3.3V ───────┼──── VCC ───┤ VCC        │        │ VA    VB ─┼── 5V    │           │
+  │  GND ────────┼──── GND ───┤ GND        │        │ GND ──────┼── GND   │           │
+  │              │            │            │        └───────────┘         │           │
+  │  J111 OLED ──┼─ (stays on │ A0 ── GND  │                             │           │
+  │  (upstream   │  upstream  │ A1 ── GND  │  CH1-7 available for        │           │
+  │   I2C bus)   │  bus)      │ A2 ── GND  │  additional I2C devices     │           │
+  │              │            │ RST ─ VCC  │                             │           │
+  └──────────────┘            └────────────┘                             └───────────┘
+
+  Addresses on this bus:
+    TCA9548A mux:          0x70 (A0/A1/A2 = GND)
+    Switching controller:  0x65 (on TCA9548A CH0, behind level shifter)
+    OLED display:          0x3C or 0x3D (upstream, direct on EX-CSB1 J111)
+
+  EX-CSB1 CommandStation-EX has built-in TCA9548A support. In myHal.cpp:
+    SwitchingController::create(800, 12, I2CAddress(I2CMux_0, SubBus_0, 0x65));
+
+  Level shifter notes:
+    Any bidirectional I2C level shifter works (e.g., BSS138-based, TXB0102).
+    VA connects to the TCA9548A downstream 3.3V; VB connects to the Mega 5V.
+    The level shifter must be bidirectional because I2C uses open-drain signaling.
+
+  Pull-up resistors:
+    3.3V side: EX-CSB1 has on-board 3.3V pull-ups (JP101/JP102 bridged).
+    5V side:   Mega internal pull-ups are enabled by Wire.begin(). If the
+               level shifter module includes pull-ups on the B side, the
+               Mega's internal pull-ups may be left as-is (they're weak ~50kΩ).
+               External 4.7kΩ pull-ups to 5V on the B side are recommended
+               if the level shifter module has none.
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ PIN USAGE SUMMARY
+═══════════════════════════════════════════════════════════════════════════════════
 
   Pin   Function              Pin   Function
   ────  ──────────────────    ────  ──────────────────
@@ -248,6 +299,6 @@ Pin assignments are defined in `include/pinLayout.h`.
 
   Pins 14-15: software I2C master bus to MB85RC256V FRAM (addr 0x50)
   Pins 16-19: free for future use
-  Pins 20-21: hardware TWI, reserved for DCC-EX I2C slave role (addr 0x65)
+  Pins 20-21: hardware TWI, DCC-EX I2C slave (addr 0x65) via TCA9548A + level shifter
   Pin 13: avoid for data signals (on-board LED)
 ```

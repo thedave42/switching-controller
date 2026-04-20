@@ -22,6 +22,7 @@ See `.github/instructions/circuit-diagram.instructions.md` for full wiring diagr
 - **Rotary encoder:** CLK on pin 2 (INT4), DT on pin 3 (INT5), SW on pin 8 (INPUT_PULLUP)
   - Used for setup mode navigation; long-press SW (≥3s) toggles setup mode
 - **LCD:** TC1602A 16×2, 4-bit parallel (pins 46–51)
+- **DCC-EX I2C connection:** The Mega's hardware TWI bus (pins 20/21) operates as an I2C slave at address `0x65`. The EX-CSB1 command station connects via a **TCA9548A I2C multiplexer** (address `0x70`) with the switching controller on channel 0. A bidirectional level shifter bridges the EX-CSB1's 3.3V I2C to the Mega's 5V TWI. See `.github/instructions/circuit-diagram.instructions.md` §7 for the full topology diagram.
 - **L298N Turnout motor driver (H-bridge):**
   - STRAIGHT = IN1 HIGH / IN2 LOW; TURN = IN1 LOW / IN2 HIGH; OFF = both LOW
   - **CRITICAL:** Motors must never be energized longer than `MOTOR_DURATION_MS` (500ms) — exceeding this damages the turnout mechanism
@@ -125,7 +126,7 @@ All LED updates go through `renderAllTurnoutLeds()` which clears the entire buff
 
 ### FRAM Persistence
 
-Turnout state and LED indices are persisted across power cycles using an external **MB85RC256V FRAM module** (32 KB, I²C address `0x50`). The FRAM lives on a **private software-I²C bus** driven by `SoftwareWire` on pins **14 (SDA)** and **15 (SCL)** — the hardware TWI bus (pins 20/21) is reserved for the DCC-EX I²C slave role (`0x65`). Only 51 bytes are used.
+Turnout state and LED indices are persisted across power cycles using an external **MB85RC256V FRAM module** (32 KB, I²C address `0x50`). The FRAM lives on a **private software-I²C bus** driven by `SoftwareWire` on pins **14 (SDA)** and **15 (SCL)** — the hardware TWI bus (pins 20/21) is used for the DCC-EX I²C slave role (`0x65`) via a TCA9548A multiplexer (see §7 in circuit diagram). Only 51 bytes are used.
 
 **Layout:**
 | Address | Content |
@@ -191,3 +192,16 @@ The LCD shows a startup message with the count of configured turnouts, then reve
 - FRAM state is written after motor completion, not on button press — prevents persisting a state the turnout never physically reached.
 - `FastLED.show()` disables all interrupts on AVR for ~1.1ms (36 LEDs at 800kHz). Encoder counts during very fast rotation could be missed. Acceptable for human-speed setup interaction.
 - **Do NOT use pin 13 for LED data** — the on-board LED circuit degrades the signal. See `.github/instructions/fastled.instructions.md`.
+
+## Debug Build Flags
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `DEBUG_I2C` | off on `main`, **auto-enabled on all other branches** | Enables the I2C heartbeat log (every 10s: rx/tx counts and SDA/SCL pin states) and the ISR activity counters in `i2c_slave.cpp` |
+
+The pre-build script `extra_scripts/debug_flags.py` checks the current git branch at compile time. On any branch other than `main`, it automatically adds `-DDEBUG_I2C`. This is configured via the `extra_scripts = pre:extra_scripts/debug_flags.py` line in `platformio.ini`.
+
+To force-enable on `main` for a one-off build:
+```sh
+PLATFORMIO_BUILD_FLAGS="-DDEBUG_I2C" pio run
+```

@@ -36,15 +36,18 @@ static volatile bool i2cReady = false;
 // Count of configured turnouts (cached at setup time)
 static uint8_t configuredCount = 0;
 
-// Debug counters for ISR activity
+// Debug counters for ISR activity (compiled out unless -DDEBUG_I2C)
+#ifdef DEBUG_I2C
 static volatile uint32_t i2cReceiveCount = 0;
 static volatile uint32_t i2cRequestCount = 0;
+#endif
 
 // --- ISR: called when master sends data to this slave ---
 static void receiveEvent(int numBytes)
 {
+#ifdef DEBUG_I2C
   i2cReceiveCount++;
-  if (numBytes == 0)
+#endif  if (numBytes == 0)
     return;
 
   uint8_t buffer[4];
@@ -114,7 +117,9 @@ static void receiveEvent(int numBytes)
 // --- ISR: called when master requests data from this slave ---
 static void requestEvent()
 {
+#ifdef DEBUG_I2C
   i2cRequestCount++;
+#endif
   switch (outboundFlag)
   {
   case SC_GETINFO:
@@ -286,6 +291,7 @@ void updateI2CStateSnapshot()
   interrupts();
 
   // Periodic debug heartbeat (every 10 seconds)
+#ifdef DEBUG_I2C
   static unsigned long lastDebugMs = 0;
   if (millis() - lastDebugMs >= 10000)
   {
@@ -299,4 +305,5 @@ void updateI2CStateSnapshot()
     Serial.print(F(" SCL="));
     Serial.println(digitalRead(I2C_SCL));
   }
+#endif
 }
