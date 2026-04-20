@@ -28,6 +28,9 @@ Pin assignments are defined in `include/pinLayout.h`.
                          │  Pin 11 ────────────────┼──── BTN ROW1 (INPUT_PULLUP)
                          │  Pin 12 ────────────────┼──── BTN ROW0 (INPUT_PULLUP)
                          │                         │
+                         │  Pin 14 ────────────────┼──── FRAM SDA (sw I2C, MB85RC256V)
+                         │  Pin 15 ────────────────┼──── FRAM SCL (sw I2C, MB85RC256V)
+                         │                         │
                          │  Pin 22 ────────────────┼──── T0 IN1 ──┐
                          │  Pin 23 ────────────────┼──── T0 IN2 ──┤ L298N
                          │  Pin 24 ────────────────┼──── T1 IN1 ──┤ Motor
@@ -172,8 +175,46 @@ Pin assignments are defined in `include/pinLayout.h`.
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
- PIN USAGE SUMMARY
+ 6. FRAM MODULE (MB85RC256V on private software I2C bus)
 ═══════════════════════════════════════════════════════════════════════════════════
+
+  The hardware TWI bus (pins 20/21) is reserved for the DCC-EX I2C slave
+  role at address 0x65, so the FRAM lives on a private bit-banged bus
+  driven by SoftwareWire on pins 14/15. Master-only on this bus; the
+  Mega is the only master and the FRAM (addr 0x50) is the only slave.
+
+   ┌──────────────────┐                     ┌─────────────────┐
+   │  ARDUINO MEGA    │                     │  MB85RC256V     │
+   │  2560            │                     │  FRAM Module    │
+   │                  │                     │  (Adafruit      │
+   │                  │                     │   FRAM_SO8_I2C) │
+   │  Pin 14 ─────────┼──── SDA (sw) ───────┤ SDA             │
+   │  Pin 15 ─────────┼──── SCL (sw) ───────┤ SCL             │
+   │  5V     ─────────┼─────────────────────┤ VCC             │
+   │  GND    ─────────┼─────────────────────┤ GND             │
+   │                  │                     │ WP  ── GND      │
+   │                  │                     │ A0  ── GND      │
+   │                  │                     │ A1  ── GND      │
+   │                  │                     │ A2  ── GND      │
+   │  Pin 20 (SDA) ◄──┼── reserved for DCC-EX (hardware Wire) │
+   │  Pin 21 (SCL) ◄──┼── reserved for DCC-EX (hardware Wire) │
+   └──────────────────┘                     └─────────────────┘
+
+  I2C address: 0b1010_A2A1A0 = 0x50 with A0/A1/A2 tied LOW.
+  A0/A1/A2 have NO internal pull-downs — leaving them floating yields
+  an undefined address. They must be wired to GND.
+
+  Pull-up resistors on SDA/SCL: the Adafruit FRAM_SO8_I2C breakout has
+  4.7kΩ pull-ups on board. If using a bare chip or a breakout without
+  pull-ups, add: SDA ──[4.7kΩ]── 5V and SCL ──[4.7kΩ]── 5V.
+
+  WP (write protect): tied to GND to enable writes. The Adafruit board
+  also has an internal pull-down on WP, so leaving it floating would
+  default to "writes enabled" too — but on other vendor breakouts WP
+  often floats HIGH, so tying it to GND is the portable choice.
+
+
+
 
   Pin   Function              Pin   Function
   ────  ──────────────────    ────  ──────────────────
