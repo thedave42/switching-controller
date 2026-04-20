@@ -6,7 +6,7 @@ switching controller system).
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════╗
-║                TCA9548A I2C MULTIPLEXER BREAKOUT BOARD                         ║
+║                     TCA9548A I2C MULTIPLEXER BREAKOUT BOARD                      ║
 ╚══════════════════════════════════════════════════════════════════════════════════╝
 
 
@@ -15,19 +15,19 @@ switching controller system).
 ═══════════════════════════════════════════════════════════════════════════════════
 
                             ┌───────────────────────┐
-                   A0  ── 1 │ A0               VCC │ 24 ── VCC
-                   A1  ── 2 │ A1               SDA │ 23 ── SDA (upstream)
-                 RESET ── 3 │ RESET            SCL │ 22 ── SCL (upstream)
-                  SDA0 ── 4 │ SDA0              A2 │ 21 ── A2
-                  SCL0 ── 5 │ SCL0   TCA9548A     │
-                  SDA1 ── 6 │ SDA1   (U1)    SCL7 │ 20 ── SCL7
-                  SCL1 ── 7 │ SCL1           SDA7 │ 19 ── SDA7
-                  SDA2 ── 8 │ SDA2           SCL6 │ 18 ── SCL6
-                  SCL2 ── 9 │ SCL2           SDA6 │ 17 ── SDA6
-                  SDA3 ──10 │ SDA3           SCL5 │ 16 ── SCL5
-                  SCL3 ──11 │ SCL3           SDA5 │ 15 ── SDA5
-                   GND ──12 │ GND            SCL4 │ 14 ── SCL4
-                            │                SDA4 │ 13 ── SDA4
+                   A0  ── 1 │ A0                VCC │ 24 ── VCC
+                   A1  ── 2 │ A1                SDA │ 23 ── SDA (upstream)
+                 RESET ── 3 │ RESET             SCL │ 22 ── SCL (upstream)
+                  SDA0 ── 4 │ SDA0               A2 │ 21 ── A2
+                  SCL0 ── 5 │ SCL0    TCA9548A      │
+                  SDA1 ── 6 │ SDA1    (U1)     SCL7 │ 20 ── SCL7
+                  SCL1 ── 7 │ SCL1             SDA7 │ 19 ── SDA7
+                  SDA2 ── 8 │ SDA2             SCL6 │ 18 ── SCL6
+                  SCL2 ── 9 │ SCL2             SDA6 │ 17 ── SDA6
+                  SDA3 ──10 │ SDA3             SCL5 │ 16 ── SCL5
+                  SCL3 ──11 │ SCL3             SDA5 │ 15 ── SDA5
+                   GND ──12 │ GND              SCL4 │ 14 ── SCL4
+                            │                  SDA4 │ 13 ── SDA4
                             └───────────────────────┘
 
 
@@ -114,7 +114,7 @@ switching controller system).
          │pull)│          │pull)│          │pull)│
          └──┬──┘          └──┬──┘          └──┬──┘
             │                │                │
-  U1 Pin 1 ┤ A0   U1 Pin 2 ┤ A1  U1 Pin 21 ┤ A2
+  U1 Pin 1  ┤ A0    U1 Pin 2 ┤ A1   U1 Pin 21 ┤ A2
             │                │                │
            ┤├ SW1           ┤├ SW2           ┤├ SW3
             │                │                │
@@ -128,7 +128,7 @@ switching controller system).
   This connector carries the upstream I2C bus plus RESET.
 
   ┌────────────────────────────┐
-  │  J9 (CON5) — 5 Pin        │
+  │  J9 (CON5) — 5 Pin         │
   │                            │
   │  Pin 1 ── GND              │
   │  Pin 2 ── VCC              │
@@ -177,8 +177,8 @@ switching controller system).
         │             │                                      │
        GND           GND                                     │
                                           ┌──────────────────┤
-                     VCC ─── R2 10kΩ ─┬───┤ SDA (Pin 23)    │
-                     VCC ─── R3 10kΩ ─┬───┤ SCL (Pin 22)    │
+                     VCC ─── R2 10kΩ ─┬───┤ SDA (Pin 23)     │
+                     VCC ─── R3 10kΩ ─┬───┤ SCL (Pin 22)     │
                                       │   │                  │
                              J9.4 SDA─┘   │    TCA9548A      │ RESET (Pin 3) ── J9.5
                              J9.3 SCL─────┘    (U1)          │

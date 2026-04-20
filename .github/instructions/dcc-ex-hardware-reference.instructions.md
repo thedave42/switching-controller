@@ -9,6 +9,10 @@
 (EX-CSB1 Operating Manual)[https://dcc-ex.com/ex-commandstation/rtr-manual__included-esb1.html]
 (EX-CSB1 Board Schematics)[https://github.com/DCC-EX/EX-CSB1]
 
+Using a (VL53L0X Time of Flight Sensor)[https://dcc-ex.com/ex-commandstation/accessories/sensors/vl53l0x-tof-sensor.html].
+
+Source code for EX-CSB1 software, EX-Commander, is available in this repo in the folder (./CommandStation-EX)[./CommandStationEX].
+
 # EX-CSB1 I2C Connector Pinouts
 
 Pin assignments derived from the EX-CSB1 KiCad schematic (`EX-CSB1.kicad_sch`) in the [DCC-EX/EX-CSB1](https://github.com/DCC-EX/EX-CSB1) repository.
