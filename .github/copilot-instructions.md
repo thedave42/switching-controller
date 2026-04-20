@@ -112,7 +112,7 @@ A per-turnout cooldown (`CLICK_COOLDOWN_MS`, currently `MOTOR_DURATION_MS + 250`
 
 Motors are energized for `MOTOR_DURATION_MS` (500ms) using a non-blocking timer checked in `loop()`. While a motor is active, clicks on that turnout's button are ignored. **Motors must NEVER be energized longer than `MOTOR_DURATION_MS`** — the turnout mechanism can be damaged by prolonged power.
 
-After the motor pulse completes in `loop()`, the turnout's state is saved to EEPROM (in normal mode only). This ensures EEPROM only records states the turnout physically reached.
+After the motor pulse completes in `loop()`, the turnout's state is saved to FRAM (in normal mode only). This ensures FRAM only records states the turnout physically reached.
 
 ### LED Feedback
 
@@ -121,30 +121,32 @@ Each turnout has 3 LEDs:
 - **Straight LED** — green when STRAIGHT, red when TURN
 - **Turn LED** — green when TURN, red when STRAIGHT
 
-All LED updates go through `renderAllTurnoutLeds()` which clears the entire buffer and repaints every LED based on the canonical turnout state. LED fields set to `LED_UNASSIGNED` (0xFF) are skipped. This is called after EEPROM load, config save, setup mode exit, and state toggles. See `.github/instructions/fastled.instructions.md` for full FastLED usage details.
+All LED updates go through `renderAllTurnoutLeds()` which clears the entire buffer and repaints every LED based on the canonical turnout state. LED fields set to `LED_UNASSIGNED` (0xFF) are skipped. This is called after FRAM load, config save, setup mode exit, and state toggles. See `.github/instructions/fastled.instructions.md` for full FastLED usage details.
 
-### EEPROM Persistence
+### FRAM Persistence
 
-Turnout state and LED indices are persisted across power cycles using the ATmega2560's built-in EEPROM (4KB available, 51 bytes used).
+Turnout state and LED indices are persisted across power cycles using an external **MB85RC256V FRAM module** (32 KB, I²C address `0x50`). The FRAM lives on a **private software-I²C bus** driven by `SoftwareWire` on pins **14 (SDA)** and **15 (SCL)** — the hardware TWI bus (pins 20/21) is reserved for the DCC-EX I²C slave role (`0x65`). Only 51 bytes are used.
 
 **Layout:**
 | Address | Content |
 |---|---|
 | 0 | Magic byte (0xA5) |
-| 1 | Version byte (1) |
+| 1 | Version byte (2) |
 | 2–49 | 4 bytes per turnout × 12 (state, inLedIdx, straightLedIdx, turnLedIdx) |
 | 50 | CRC8 over bytes 2–49 |
 
 **Boot sequence:**
 1. `configureTurnout()` calls set hardcoded defaults (motor pins, button mapping, names)
-2. `eepromLoad()` checks magic + version + CRC; if valid, overrides state and LED indices
-3. If invalid (first boot or corruption), `eepromSaveAll()` writes current defaults
-4. Motor initialization uses the loaded state (not always STRAIGHT)
+2. `fram.begin()` then `framProbe()` verifies the FRAM responds; sets the `framAvailable` flag. If probing fails, persistence is disabled for this power cycle but the system continues to operate.
+3. `storageLoad()` checks magic + version + CRC; if valid, overrides state and LED indices
+4. If invalid (first boot or corruption), `storageSaveAll()` writes current defaults
+5. Motor initialization uses the loaded state (not always STRAIGHT)
 
 **Write strategy:**
-- `EEPROM.update()` minimizes wear (skips unchanged bytes)
+- `framWrite8()` is called unconditionally — FRAM has virtually unlimited write endurance (~10¹³ cycles), so there is no need for a read-before-write optimization.
 - State saved after motor completion, not on button press
 - LED config saved immediately when user confirms in setup mode
+- All `storageSave*` / `storageLoad` calls short-circuit to a no-op when `!framAvailable`.
 
 **Validation:** On load, each turnout's data is range-checked (`state <= TURN`, LED indices `< NUM_LEDS`). Invalid entries are skipped and retain hardcoded defaults.
 
@@ -163,7 +165,7 @@ SETUP_IDLE → (button press) → SETUP_DIRECTION → SETUP_IN_LED → SETUP_STR
 
 **SETUP_*_LED fields:** The LCD shows the LED index. The LED at that index blinks white (250ms on/off). Rotating the encoder changes the index (wrapping 0–35).
 
-**Saving:** Press the same button that started configuration. Config is written to EEPROM immediately.
+**Saving:** Press the same button that started configuration. Config is written to FRAM immediately.
 
 **Switching:** Press a different button to discard current changes and start configuring the new button.
 
@@ -186,6 +188,6 @@ The LCD shows a startup message with the count of configured turnouts, then reve
 - The project uses the `RSys` namespace from the ButtonMatrix library (`using namespace RSys;`).
 - Serial baud rate is 9600.
 - Turnout motor pin assignments in `pinLayout.h` are intentionally non-sequential (e.g., T5 = pins 34–35, T7 = pins 32–33) to match physical wiring.
-- EEPROM state is written after motor completion, not on button press — prevents persisting a state the turnout never physically reached.
+- FRAM state is written after motor completion, not on button press — prevents persisting a state the turnout never physically reached.
 - `FastLED.show()` disables all interrupts on AVR for ~1.1ms (36 LEDs at 800kHz). Encoder counts during very fast rotation could be missed. Acceptable for human-speed setup interaction.
 - **Do NOT use pin 13 for LED data** — the on-board LED circuit degrades the signal. See `.github/instructions/fastled.instructions.md`.

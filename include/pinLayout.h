@@ -75,8 +75,15 @@ ButtonMatrix Definitions
 #define LCD_D7  51
 
 // I2C (DCC-EX communication)
-// Pins 20/21 are the hardware I2C (TWI) pins on the ATmega2560
+// Pins 20/21 are the hardware I2C (TWI) pins on the ATmega2560.
+// The hardware TWI operates as I2C slave at address 0x65 for DCC-EX.
 #define I2C_SDA 20
 #define I2C_SCL 21
+
+// Software I2C bus for FRAM (MB85RC256V) — pins 14/15 are bit-banged via
+// SoftwareWire. This is a private, master-only bus; the hardware TWI bus is
+// reserved for the DCC-EX slave role and cannot be shared.
+#define FRAM_SDA 14
+#define FRAM_SCL 15
 
 #endif // PINLAYOUT_H

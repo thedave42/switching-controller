@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <EEPROM.h>
+#include <SoftwareWire.h>
 #include <Encoder.h>
 #include <FastLED.h>
 #include <LiquidCrystal.h>
@@ -21,14 +21,21 @@ const unsigned long ENC_DEBOUNCE_MS = 50;     // Encoder switch debounce
 const unsigned long BLINK_INTERVAL_MS = 250;  // LED blink rate during setup
 const uint8_t LED_UNASSIGNED = 0xFF;          // Sentinel for "no LED assigned"
 
-// --- EEPROM layout ---
-const uint8_t EEPROM_MAGIC = 0xA5;
-const uint8_t EEPROM_VERSION = 2;
-const uint8_t EEPROM_ADDR_MAGIC = 0;
-const uint8_t EEPROM_ADDR_VERSION = 1;
-const uint8_t EEPROM_ADDR_DATA = 2;          // 4 bytes per turnout × 12 = 48 bytes
-const uint8_t EEPROM_BYTES_PER_TURNOUT = 4;  // state, inLedIdx, straightLedIdx, turnLedIdx
-const uint8_t EEPROM_ADDR_CRC = EEPROM_ADDR_DATA + (EEPROM_BYTES_PER_TURNOUT * 12); // byte 50
+// --- Storage layout (FRAM MB85RC256V via SoftwareWire) ---
+const uint8_t STORAGE_MAGIC = 0xA5;
+const uint8_t STORAGE_VERSION = 2;
+const uint8_t STORAGE_ADDR_MAGIC = 0;
+const uint8_t STORAGE_ADDR_VERSION = 1;
+const uint8_t STORAGE_ADDR_DATA = 2;          // 4 bytes per turnout × 12 = 48 bytes
+const uint8_t STORAGE_BYTES_PER_TURNOUT = 4;  // state, inLedIdx, straightLedIdx, turnLedIdx
+const uint8_t STORAGE_ADDR_CRC = STORAGE_ADDR_DATA + (STORAGE_BYTES_PER_TURNOUT * 12); // byte 50
+
+// --- FRAM (MB85RC256V) on a private software I2C bus ---
+// The hardware Wire bus is reserved for the DCC-EX I2C slave role (addr 0x65),
+// so the FRAM sits on its own bit-banged bus via SoftwareWire on pins 14/15.
+const uint8_t FRAM_I2C_ADDR = 0x50;           // A0=A1=A2 tied to GND
+SoftwareWire fram(FRAM_SDA, FRAM_SCL);
+bool framAvailable = false;
 
 // --- LED array ---
 CRGB leds[NUM_LEDS];
@@ -91,10 +98,13 @@ void motorActivate(Turnout &t);
 void lcdShowIdle();
 const char *getTurnoutLabel(uint8_t index, char *buf, uint8_t bufSize);
 void renderAllTurnoutLeds();
-uint8_t eepromCRC8(uint8_t startAddr, uint8_t length);
-void eepromSaveTurnout(uint8_t index);
-void eepromSaveAll();
-bool eepromLoad();
+uint8_t framRead8(uint16_t addr);
+uint8_t framWrite8(uint16_t addr, uint8_t val);
+bool framProbe();
+uint8_t storageCRC8(uint8_t startAddr, uint8_t length);
+void storageSaveTurnout(uint8_t index);
+void storageSaveAll();
+bool storageLoad();
 void handleSetupButton(uint8_t buttonNum);
 void setupFieldEnter();
 void setupFieldDisplay();
@@ -195,13 +205,67 @@ void renderAllTurnoutLeds()
   FastLED.show();
 }
 
-// --- EEPROM: CRC8 over a range of EEPROM bytes ---
-uint8_t eepromCRC8(uint8_t startAddr, uint8_t length)
+// --- FRAM: low-level byte access over SoftwareWire ---
+// MB85RC256V uses a 16-bit memory address word (MSB first).
+uint8_t framRead8(uint16_t addr)
+{
+  fram.beginTransmission(FRAM_I2C_ADDR);
+  fram.write((uint8_t)(addr >> 8));
+  fram.write((uint8_t)(addr & 0xFF));
+  fram.endTransmission(false); // RESTART, keep bus
+  fram.requestFrom((uint8_t)FRAM_I2C_ADDR, (uint8_t)1);
+  if (fram.available())
+    return (uint8_t)fram.read();
+  return 0xFF;
+}
+
+// Returns the SoftwareWire endTransmission() status: 0 = success, non-zero
+// indicates an I2C bus error (NACK on address, NACK on data, timeout, etc.).
+// Callers can OR multiple write statuses together to detect any failure
+// across a multi-byte save.
+uint8_t framWrite8(uint16_t addr, uint8_t val)
+{
+  fram.beginTransmission(FRAM_I2C_ADDR);
+  fram.write((uint8_t)(addr >> 8));
+  fram.write((uint8_t)(addr & 0xFF));
+  fram.write(val);
+  return fram.endTransmission();
+}
+
+// Write-then-read a scratch byte above our persistent region to verify the
+// FRAM is wired up and responds correctly. Always restores the original
+// byte before returning, including on failure paths.
+bool framProbe()
+{
+  const uint16_t probeAddr = 0x7FFF; // last byte of 32KB
+  uint8_t original = framRead8(probeAddr);
+  const uint8_t pattern1 = 0xA5;
+  const uint8_t pattern2 = 0x5A;
+  bool ok = true;
+
+  framWrite8(probeAddr, pattern1);
+  if (framRead8(probeAddr) != pattern1)
+  {
+    ok = false;
+  }
+  else
+  {
+    framWrite8(probeAddr, pattern2);
+    if (framRead8(probeAddr) != pattern2)
+      ok = false;
+  }
+
+  framWrite8(probeAddr, original);
+  return ok;
+}
+
+// --- FRAM: CRC8 over a range of storage bytes ---
+uint8_t storageCRC8(uint8_t startAddr, uint8_t length)
 {
   uint8_t crc = 0;
   for (uint8_t i = 0; i < length; i++)
   {
-    uint8_t b = EEPROM.read(startAddr + i);
+    uint8_t b = framRead8(startAddr + i);
     for (uint8_t bit = 0; bit < 8; bit++)
     {
       uint8_t mix = (crc ^ b) & 0x01;
@@ -214,55 +278,81 @@ uint8_t eepromCRC8(uint8_t startAddr, uint8_t length)
   return crc;
 }
 
-// --- EEPROM: save a single turnout's config ---
-void eepromSaveTurnout(uint8_t index)
+// --- FRAM: save a single turnout's config ---
+void storageSaveTurnout(uint8_t index)
 {
-  uint8_t addr = EEPROM_ADDR_DATA + (index * EEPROM_BYTES_PER_TURNOUT);
+  if (!framAvailable) return;
+  uint8_t addr = STORAGE_ADDR_DATA + (index * STORAGE_BYTES_PER_TURNOUT);
   // Encode state in bit 0, reversed in bit 1
   uint8_t stateByte = (uint8_t)turnouts[index].state | (turnouts[index].reversed ? 0x02 : 0x00);
-  EEPROM.update(addr + 0, stateByte);
-  EEPROM.update(addr + 1, turnouts[index].inLedIdx);
-  EEPROM.update(addr + 2, turnouts[index].straightLedIdx);
-  EEPROM.update(addr + 3, turnouts[index].turnLedIdx);
+  // Capture the first non-zero I2C status so the logged code is a real
+  // endTransmission() result rather than a meaningless OR of several.
+  uint8_t err = 0;
+  uint8_t s;
+  if (!err && (s = framWrite8(addr + 0, stateByte))) err = s;
+  if (!err && (s = framWrite8(addr + 1, turnouts[index].inLedIdx))) err = s;
+  if (!err && (s = framWrite8(addr + 2, turnouts[index].straightLedIdx))) err = s;
+  if (!err && (s = framWrite8(addr + 3, turnouts[index].turnLedIdx))) err = s;
   // Recompute and save CRC over entire data block
-  uint8_t crc = eepromCRC8(EEPROM_ADDR_DATA, EEPROM_BYTES_PER_TURNOUT * NUM_BUTTONS);
-  EEPROM.update(EEPROM_ADDR_CRC, crc);
+  uint8_t crc = storageCRC8(STORAGE_ADDR_DATA, STORAGE_BYTES_PER_TURNOUT * NUM_BUTTONS);
+  if (!err && (s = framWrite8(STORAGE_ADDR_CRC, crc))) err = s;
+  if (err)
+  {
+    Serial.print("FRAM: save failed for turnout ");
+    Serial.print(index);
+    Serial.print(" (I2C status ");
+    Serial.print(err);
+    Serial.println(")");
+  }
 }
 
-// --- EEPROM: save all turnouts + header ---
-void eepromSaveAll()
+// --- FRAM: save all turnouts + header ---
+void storageSaveAll()
 {
-  EEPROM.update(EEPROM_ADDR_MAGIC, EEPROM_MAGIC);
-  EEPROM.update(EEPROM_ADDR_VERSION, EEPROM_VERSION);
+  if (!framAvailable) return;
+  uint8_t err = 0;
+  uint8_t s;
+  if (!err && (s = framWrite8(STORAGE_ADDR_MAGIC, STORAGE_MAGIC))) err = s;
+  if (!err && (s = framWrite8(STORAGE_ADDR_VERSION, STORAGE_VERSION))) err = s;
   for (uint8_t i = 0; i < NUM_BUTTONS; i++)
   {
-    uint8_t addr = EEPROM_ADDR_DATA + (i * EEPROM_BYTES_PER_TURNOUT);
+    uint8_t addr = STORAGE_ADDR_DATA + (i * STORAGE_BYTES_PER_TURNOUT);
     uint8_t stateByte = (uint8_t)turnouts[i].state | (turnouts[i].reversed ? 0x02 : 0x00);
-    EEPROM.update(addr + 0, stateByte);
-    EEPROM.update(addr + 1, turnouts[i].inLedIdx);
-    EEPROM.update(addr + 2, turnouts[i].straightLedIdx);
-    EEPROM.update(addr + 3, turnouts[i].turnLedIdx);
+    if (!err && (s = framWrite8(addr + 0, stateByte))) err = s;
+    if (!err && (s = framWrite8(addr + 1, turnouts[i].inLedIdx))) err = s;
+    if (!err && (s = framWrite8(addr + 2, turnouts[i].straightLedIdx))) err = s;
+    if (!err && (s = framWrite8(addr + 3, turnouts[i].turnLedIdx))) err = s;
   }
-  uint8_t crc = eepromCRC8(EEPROM_ADDR_DATA, EEPROM_BYTES_PER_TURNOUT * NUM_BUTTONS);
-  EEPROM.update(EEPROM_ADDR_CRC, crc);
-  Serial.println("EEPROM: saved all");
+  uint8_t crc = storageCRC8(STORAGE_ADDR_DATA, STORAGE_BYTES_PER_TURNOUT * NUM_BUTTONS);
+  if (!err && (s = framWrite8(STORAGE_ADDR_CRC, crc))) err = s;
+  if (err)
+  {
+    Serial.print("FRAM: saveAll failed (I2C status ");
+    Serial.print(err);
+    Serial.println(")");
+  }
+  else
+  {
+    Serial.println("FRAM: saved all");
+  }
 }
 
-// --- EEPROM: load turnout config; returns true if valid data was loaded ---
-bool eepromLoad()
+// --- FRAM: load turnout config; returns true if valid data was loaded ---
+bool storageLoad()
 {
-  if (EEPROM.read(EEPROM_ADDR_MAGIC) != EEPROM_MAGIC ||
-      EEPROM.read(EEPROM_ADDR_VERSION) != EEPROM_VERSION)
+  if (!framAvailable) return false;
+  if (framRead8(STORAGE_ADDR_MAGIC) != STORAGE_MAGIC ||
+      framRead8(STORAGE_ADDR_VERSION) != STORAGE_VERSION)
   {
-    Serial.println("EEPROM: no valid header");
+    Serial.println("FRAM: no valid header");
     return false;
   }
 
-  uint8_t storedCrc = EEPROM.read(EEPROM_ADDR_CRC);
-  uint8_t calcCrc = eepromCRC8(EEPROM_ADDR_DATA, EEPROM_BYTES_PER_TURNOUT * NUM_BUTTONS);
+  uint8_t storedCrc = framRead8(STORAGE_ADDR_CRC);
+  uint8_t calcCrc = storageCRC8(STORAGE_ADDR_DATA, STORAGE_BYTES_PER_TURNOUT * NUM_BUTTONS);
   if (storedCrc != calcCrc)
   {
-    Serial.println("EEPROM: CRC mismatch");
+    Serial.println("FRAM: CRC mismatch");
     return false;
   }
 
@@ -270,11 +360,11 @@ bool eepromLoad()
   {
     if (!turnouts[i].configured)
       continue;
-    uint8_t addr = EEPROM_ADDR_DATA + (i * EEPROM_BYTES_PER_TURNOUT);
-    uint8_t stateByte = EEPROM.read(addr + 0);
-    uint8_t inLed = EEPROM.read(addr + 1);
-    uint8_t straightLed = EEPROM.read(addr + 2);
-    uint8_t turnLed = EEPROM.read(addr + 3);
+    uint8_t addr = STORAGE_ADDR_DATA + (i * STORAGE_BYTES_PER_TURNOUT);
+    uint8_t stateByte = framRead8(addr + 0);
+    uint8_t inLed = framRead8(addr + 1);
+    uint8_t straightLed = framRead8(addr + 2);
+    uint8_t turnLed = framRead8(addr + 3);
 
     // Decode state (bit 0) and reversed (bit 1)
     uint8_t state = stateByte & 0x01;
@@ -287,7 +377,7 @@ bool eepromLoad()
         (straightLed >= NUM_LEDS && straightLed != LED_UNASSIGNED) ||
         (turnLed >= NUM_LEDS && turnLed != LED_UNASSIGNED))
     {
-      Serial.print("EEPROM: invalid data for turnout ");
+      Serial.print("FRAM: invalid data for turnout ");
       Serial.println(i);
       continue;
     }
@@ -299,7 +389,7 @@ bool eepromLoad()
     turnouts[i].turnLedIdx = turnLed;
   }
 
-  Serial.println("EEPROM: loaded");
+  Serial.println("FRAM: loaded");
   return true;
 }
 
@@ -452,7 +542,7 @@ void handleEncoderClick()
   setupFieldEnter();
 }
 
-// --- Setup mode: save current config to turnout and EEPROM ---
+// --- Setup mode: save current config to turnout and FRAM ---
 void setupSave()
 {
   if (setupTurnoutIdx < 0)
@@ -474,7 +564,7 @@ void setupSave()
   // Resolve LED conflicts: self-conflicts and cross-turnout duplicates
   resolveLedConflicts(setupTurnoutIdx);
 
-  eepromSaveTurnout(setupTurnoutIdx);
+  storageSaveTurnout(setupTurnoutIdx);
 
   Serial.print("Setup: saved turnout ");
   Serial.print(setupTurnoutIdx);
@@ -567,7 +657,7 @@ void resolveLedConflicts(uint8_t savedIdx)
     }
 
     if (dirty)
-      eepromSaveTurnout(j);
+      storageSaveTurnout(j);
   }
 }
 
@@ -603,7 +693,7 @@ void normalizeLedAssignments()
         if (prev.inLedIdx == idx) prev.inLedIdx = LED_UNASSIGNED;
         if (prev.straightLedIdx == idx) prev.straightLedIdx = LED_UNASSIGNED;
         if (prev.turnLedIdx == idx) prev.turnLedIdx = LED_UNASSIGNED;
-        eepromSaveTurnout(owner[idx]);
+        storageSaveTurnout(owner[idx]);
       }
       owner[idx] = i;
     }
@@ -772,8 +862,8 @@ void onButtonAction(Button &button)
   lcdMessageMs = millis();
   lcdShowingAction = true;
 
-  // Start motor timer (non-blocking) — state saved to EEPROM after motor completes in loop()
-  t->pendingEepromSave = (appMode == MODE_NORMAL);
+  // Start motor timer (non-blocking) — state saved to FRAM after motor completes in loop()
+  t->pendingStorageSave = (appMode == MODE_NORMAL);
   motorActivate(*t);
 }
 
@@ -813,12 +903,29 @@ void setup()
   configureTurnout(10, 11, T10_IN1, T10_IN2,  35, 33, 34, true,  "Yard Exit");
   configureTurnout(11,  7, T11_IN1, T11_IN2,  27, 29, 28, false, "Staging 1");
 
-  // Load EEPROM config BEFORE motor initialization
-  // This overrides hardcoded state and LED indices with saved values
-  if (!eepromLoad())
+  // Initialize FRAM on the private software I2C bus (pins 14/15).
+  // Hardware Wire is reserved for the DCC-EX slave role and cannot be shared.
+  fram.begin();
+  framAvailable = framProbe();
+  if (framAvailable)
   {
-    Serial.println("EEPROM: first boot, saving defaults");
-    eepromSaveAll();
+    Serial.println("FRAM: ready");
+  }
+  else
+  {
+    Serial.println("FRAM: probe failed - persistence disabled");
+  }
+
+  // Load FRAM config BEFORE motor initialization
+  // This overrides hardcoded state and LED indices with saved values
+  if (!framAvailable)
+  {
+    Serial.println("FRAM: unavailable, using hardcoded defaults");
+  }
+  else if (!storageLoad())
+  {
+    Serial.println("FRAM: first boot, saving defaults");
+    storageSaveAll();
   }
 
   // Resolve any pre-existing LED duplicates from older firmware or manual edits
@@ -959,7 +1066,7 @@ void loop()
   processI2CCommands();
   updateI2CStateSnapshot();
 
-  // --- Non-blocking motor shutoff + EEPROM state save ---
+  // --- Non-blocking motor shutoff + FRAM state save ---
   for (uint8_t i = 0; i < NUM_BUTTONS; i++)
   {
     // Normal shutoff path
@@ -970,11 +1077,11 @@ void loop()
       turnouts[i].motorActive = false;
     }
 
-    // Save to EEPROM once motor is no longer active
-    if (turnouts[i].pendingEepromSave && !turnouts[i].motorActive)
+    // Save to FRAM once motor is no longer active
+    if (turnouts[i].pendingStorageSave && !turnouts[i].motorActive)
     {
-      eepromSaveTurnout(i);
-      turnouts[i].pendingEepromSave = false;
+      storageSaveTurnout(i);
+      turnouts[i].pendingStorageSave = false;
     }
   }
 

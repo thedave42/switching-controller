@@ -47,6 +47,7 @@ The FRAM module sits alone on this private bus, so external pull-ups are require
    │                  │                     │ WP  ── GND      │
    │                  │                     │ A0  ── GND      │
    │                  │                     │ A1  ── GND      │
+   │                  │                     │ A2  ── GND      │
    │  Pin 20 (SDA) ◄──┼── reserved for DCC-EX (hardware Wire) │
    │  Pin 21 (SCL) ◄──┼── reserved for DCC-EX (hardware Wire) │
    └──────────────────┘                     └─────────────────┘

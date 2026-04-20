@@ -40,7 +40,7 @@ struct Turnout
   bool motorActive;
   unsigned long motorStartMs;
   unsigned long lastClickMs;
-  bool pendingEepromSave;
+  bool pendingStorageSave;
   const char *name;
 };
 
