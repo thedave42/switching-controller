@@ -99,7 +99,7 @@ void lcdShowIdle();
 const char *getTurnoutLabel(uint8_t index, char *buf, uint8_t bufSize);
 void renderAllTurnoutLeds();
 uint8_t framRead8(uint16_t addr);
-void framWrite8(uint16_t addr, uint8_t val);
+uint8_t framWrite8(uint16_t addr, uint8_t val);
 bool framProbe();
 uint8_t storageCRC8(uint8_t startAddr, uint8_t length);
 void storageSaveTurnout(uint8_t index);
@@ -219,13 +219,17 @@ uint8_t framRead8(uint16_t addr)
   return 0xFF;
 }
 
-void framWrite8(uint16_t addr, uint8_t val)
+// Returns the SoftwareWire endTransmission() status: 0 = success, non-zero
+// indicates an I2C bus error (NACK on address, NACK on data, timeout, etc.).
+// Callers can OR multiple write statuses together to detect any failure
+// across a multi-byte save.
+uint8_t framWrite8(uint16_t addr, uint8_t val)
 {
   fram.beginTransmission(FRAM_I2C_ADDR);
   fram.write((uint8_t)(addr >> 8));
   fram.write((uint8_t)(addr & 0xFF));
   fram.write(val);
-  fram.endTransmission();
+  return fram.endTransmission();
 }
 
 // Write-then-read a scratch byte above our persistent region to verify the
@@ -270,33 +274,52 @@ void storageSaveTurnout(uint8_t index)
   uint8_t addr = STORAGE_ADDR_DATA + (index * STORAGE_BYTES_PER_TURNOUT);
   // Encode state in bit 0, reversed in bit 1
   uint8_t stateByte = (uint8_t)turnouts[index].state | (turnouts[index].reversed ? 0x02 : 0x00);
-  framWrite8(addr + 0, stateByte);
-  framWrite8(addr + 1, turnouts[index].inLedIdx);
-  framWrite8(addr + 2, turnouts[index].straightLedIdx);
-  framWrite8(addr + 3, turnouts[index].turnLedIdx);
+  uint8_t err = 0;
+  err |= framWrite8(addr + 0, stateByte);
+  err |= framWrite8(addr + 1, turnouts[index].inLedIdx);
+  err |= framWrite8(addr + 2, turnouts[index].straightLedIdx);
+  err |= framWrite8(addr + 3, turnouts[index].turnLedIdx);
   // Recompute and save CRC over entire data block
   uint8_t crc = storageCRC8(STORAGE_ADDR_DATA, STORAGE_BYTES_PER_TURNOUT * NUM_BUTTONS);
-  framWrite8(STORAGE_ADDR_CRC, crc);
+  err |= framWrite8(STORAGE_ADDR_CRC, crc);
+  if (err)
+  {
+    Serial.print("FRAM: save failed for turnout ");
+    Serial.print(index);
+    Serial.print(" (I2C status ");
+    Serial.print(err);
+    Serial.println(")");
+  }
 }
 
 // --- FRAM: save all turnouts + header ---
 void storageSaveAll()
 {
   if (!framAvailable) return;
-  framWrite8(STORAGE_ADDR_MAGIC, STORAGE_MAGIC);
-  framWrite8(STORAGE_ADDR_VERSION, STORAGE_VERSION);
+  uint8_t err = 0;
+  err |= framWrite8(STORAGE_ADDR_MAGIC, STORAGE_MAGIC);
+  err |= framWrite8(STORAGE_ADDR_VERSION, STORAGE_VERSION);
   for (uint8_t i = 0; i < NUM_BUTTONS; i++)
   {
     uint8_t addr = STORAGE_ADDR_DATA + (i * STORAGE_BYTES_PER_TURNOUT);
     uint8_t stateByte = (uint8_t)turnouts[i].state | (turnouts[i].reversed ? 0x02 : 0x00);
-    framWrite8(addr + 0, stateByte);
-    framWrite8(addr + 1, turnouts[i].inLedIdx);
-    framWrite8(addr + 2, turnouts[i].straightLedIdx);
-    framWrite8(addr + 3, turnouts[i].turnLedIdx);
+    err |= framWrite8(addr + 0, stateByte);
+    err |= framWrite8(addr + 1, turnouts[i].inLedIdx);
+    err |= framWrite8(addr + 2, turnouts[i].straightLedIdx);
+    err |= framWrite8(addr + 3, turnouts[i].turnLedIdx);
   }
   uint8_t crc = storageCRC8(STORAGE_ADDR_DATA, STORAGE_BYTES_PER_TURNOUT * NUM_BUTTONS);
-  framWrite8(STORAGE_ADDR_CRC, crc);
-  Serial.println("FRAM: saved all");
+  err |= framWrite8(STORAGE_ADDR_CRC, crc);
+  if (err)
+  {
+    Serial.print("FRAM: saveAll failed (I2C status ");
+    Serial.print(err);
+    Serial.println(")");
+  }
+  else
+  {
+    Serial.println("FRAM: saved all");
+  }
 }
 
 // --- FRAM: load turnout config; returns true if valid data was loaded ---
