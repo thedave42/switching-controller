@@ -1,0 +1,254 @@
+# TCA9548A I2C Multiplexer Breakout Board — Circuit Diagram
+
+Reference schematic for the TCA9548A breakout board used in the DCC-EX I2C
+topology (see `circuit-diagram.instructions.md` §7 for how it fits into the
+switching controller system).
+
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                TCA9548A I2C MULTIPLEXER BREAKOUT BOARD                         ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ 1. MAIN IC — TCA9548A (U1)
+═══════════════════════════════════════════════════════════════════════════════════
+
+                            ┌───────────────────────┐
+                   A0  ── 1 │ A0               VCC │ 24 ── VCC
+                   A1  ── 2 │ A1               SDA │ 23 ── SDA (upstream)
+                 RESET ── 3 │ RESET            SCL │ 22 ── SCL (upstream)
+                  SDA0 ── 4 │ SDA0              A2 │ 21 ── A2
+                  SCL0 ── 5 │ SCL0   TCA9548A     │
+                  SDA1 ── 6 │ SDA1   (U1)    SCL7 │ 20 ── SCL7
+                  SCL1 ── 7 │ SCL1           SDA7 │ 19 ── SDA7
+                  SDA2 ── 8 │ SDA2           SCL6 │ 18 ── SCL6
+                  SCL2 ── 9 │ SCL2           SDA6 │ 17 ── SDA6
+                  SDA3 ──10 │ SDA3           SCL5 │ 16 ── SCL5
+                  SCL3 ──11 │ SCL3           SDA5 │ 15 ── SDA5
+                   GND ──12 │ GND            SCL4 │ 14 ── SCL4
+                            │                SDA4 │ 13 ── SDA4
+                            └───────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ 2. POWER & BYPASS CAPACITORS
+═══════════════════════════════════════════════════════════════════════════════════
+
+             VCC ──────┬───────────────── U1 Pin 24 (VCC)
+                       │
+                  ┌────┴────┐
+                  │  C1     │  10µF electrolytic
+                  │  10µF   │
+                  └────┬────┘
+                       │
+             GND ──────┼───────────────── U1 Pin 12 (GND)
+                       │
+                  ┌────┴────┐
+                  │  C2     │  0.1µF ceramic (decoupling)
+                  │  0.1µF  │
+                  └────┬────┘
+                       │
+             GND ──────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ 3. RESET PULL-UP
+═══════════════════════════════════════════════════════════════════════════════════
+
+  The RESET pin (pin 3) is active LOW. A 10kΩ pull-up to VCC holds it HIGH
+  (inactive) by default. The RESET line is also broken out to J9 pin 5 for
+  external control.
+
+             VCC
+              │
+           ┌──┴──┐
+           │ R1  │  10kΩ pull-up
+           │ 10K │
+           └──┬──┘
+              │
+              ├──────────── U1 Pin 3 (RESET)
+              │
+              └──────────── J9 Pin 5 (RESET)
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ 4. UPSTREAM I2C PULL-UPS (SDA / SCL)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  The upstream (master-side) SDA and SCL lines have 10kΩ pull-ups to VCC.
+  These are on the breakout board; no external pull-ups needed on this side.
+
+             VCC                      VCC
+              │                        │
+           ┌──┴──┐                  ┌──┴──┐
+           │ R2  │  10kΩ            │ R3  │  10kΩ
+           │ 10K │                  │ 10K │
+           └──┬──┘                  └──┬──┘
+              │                        │
+              ├── U1 Pin 23 (SDA)      ├── U1 Pin 22 (SCL)
+              │                        │
+              └── J9 Pin 4 (SDA)       └── J9 Pin 3 (SCL)
+
+  NOTE: The downstream channel SDA/SCL lines (SD0–SD7, SC0–SC7) do NOT have
+  pull-ups on this breakout. Pull-ups must be provided on each downstream
+  device or added externally (typically 4.7kΩ to the downstream VCC rail).
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ 5. ADDRESS SELECT SWITCHES (A0, A1, A2)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Three DIP switches (SW1–SW3) select the I2C base address. Each switch
+  connects the address pin to GND (LOW) when closed.
+
+  Base address: 0x70 (all address pins LOW).
+  Address = 0b1110_A2A1A0 → range 0x70–0x77.
+
+  In this project all switches are closed: A0=A1=A2=GND → address 0x70.
+
+           VCC              VCC              VCC
+            │                │                │
+         ┌──┴──┐          ┌──┴──┐          ┌──┴──┐
+         │(int.│          │(int.│          │(int.│
+         │pull)│          │pull)│          │pull)│
+         └──┬──┘          └──┬──┘          └──┬──┘
+            │                │                │
+  U1 Pin 1 ┤ A0   U1 Pin 2 ┤ A1  U1 Pin 21 ┤ A2
+            │                │                │
+           ┤├ SW1           ┤├ SW2           ┤├ SW3
+            │                │                │
+           GND              GND              GND
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ 6. UPSTREAM CONNECTOR — J9 (CON5, 5-pin)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  This connector carries the upstream I2C bus plus RESET.
+
+  ┌────────────────────────────┐
+  │  J9 (CON5) — 5 Pin        │
+  │                            │
+  │  Pin 1 ── GND              │
+  │  Pin 2 ── VCC              │
+  │  Pin 3 ── SCL (upstream)   │  ── U1 Pin 22, with R3 10kΩ pull-up
+  │  Pin 4 ── SDA (upstream)   │  ── U1 Pin 23, with R2 10kΩ pull-up
+  │  Pin 5 ── RESET            │  ── U1 Pin 3,  with R1 10kΩ pull-up
+  │                            │
+  └────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ 7. DOWNSTREAM CHANNEL CONNECTORS — J1–J8 (CON4, 4-pin each)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Each downstream I2C channel is broken out to a 4-pin connector.
+  No pull-ups are present on these lines on this board.
+
+  J1 (CH0)          J2 (CH1)          J3 (CH2)          J4 (CH3)
+  ┌──────────┐      ┌──────────┐      ┌──────────┐      ┌──────────┐
+  │ 1  GND   │      │ 1  GND   │      │ 1  GND   │      │ 1  GND   │
+  │ 2  VCC   │      │ 2  VCC   │      │ 2  VCC   │      │ 2  VCC   │
+  │ 3  SCL0  │      │ 3  SCL1  │      │ 3  SCL2  │      │ 3  SCL3  │
+  │ 4  SDA0  │      │ 4  SDA1  │      │ 4  SDA2  │      │ 4  SDA3  │
+  └──────────┘      └──────────┘      └──────────┘      └──────────┘
+
+  J5 (CH4)          J6 (CH5)          J7 (CH6)          J8 (CH7)
+  ┌──────────┐      ┌──────────┐      ┌──────────┐      ┌──────────┐
+  │ 1  GND   │      │ 1  GND   │      │ 1  GND   │      │ 1  GND   │
+  │ 2  VCC   │      │ 2  VCC   │      │ 2  VCC   │      │ 2  VCC   │
+  │ 3  SCL4  │      │ 3  SCL5  │      │ 3  SCL6  │      │ 3  SCL7  │
+  │ 4  SDA4  │      │ 4  SDA5  │      │ 4  SDA6  │      │ 4  SDA7  │
+  └──────────┘      └──────────┘      └──────────┘      └──────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ FULL BOARD SCHEMATIC
+═══════════════════════════════════════════════════════════════════════════════════
+
+                     VCC
+                      │
+        ┌─────────────┼──────────────────────────────────────┐
+        │             │                                      │
+   ┌────┴────┐   ┌────┴────┐                            ┌────┴────┐
+   │C1 10µF  │   │C2 0.1µF │                            │R1 10kΩ  │
+   └────┬────┘   └────┬────┘                            └────┬────┘
+        │             │                                      │
+       GND           GND                                     │
+                                          ┌──────────────────┤
+                     VCC ─── R2 10kΩ ─┬───┤ SDA (Pin 23)    │
+                     VCC ─── R3 10kΩ ─┬───┤ SCL (Pin 22)    │
+                                      │   │                  │
+                             J9.4 SDA─┘   │    TCA9548A      │ RESET (Pin 3) ── J9.5
+                             J9.3 SCL─────┘    (U1)          │
+                                              │              │
+       SW1─GND ── A0  (Pin 1)  ───────────────┤              │
+       SW2─GND ── A1  (Pin 2)  ───────────────┤              │
+       SW3─GND ── A2  (Pin 21) ───────────────┤              │
+                                              │              │
+       J1.4 ── SDA0 (Pin 4)  ─────────────────┤              │
+       J1.3 ── SCL0 (Pin 5)  ─────────────────┤              │
+       J2.4 ── SDA1 (Pin 6)  ─────────────────┤              │
+       J2.3 ── SCL1 (Pin 7)  ─────────────────┤              │
+       J3.4 ── SDA2 (Pin 8)  ─────────────────┤              │
+       J3.3 ── SCL2 (Pin 9)  ─────────────────┤              │
+       J4.4 ── SDA3 (Pin 10) ─────────────────┤              │
+       J4.3 ── SCL3 (Pin 11) ─────────────────┤              │
+       J5.4 ── SDA4 (Pin 13) ─────────────────┤              │
+       J5.3 ── SCL4 (Pin 14) ─────────────────┤              │
+       J6.4 ── SDA5 (Pin 15) ─────────────────┤              │
+       J6.3 ── SCL5 (Pin 16) ─────────────────┤              │
+       J7.4 ── SDA6 (Pin 17) ─────────────────┤              │
+       J7.3 ── SCL6 (Pin 18) ─────────────────┤              │
+       J8.4 ── SDA7 (Pin 19) ─────────────────┤              │
+       J8.3 ── SCL7 (Pin 20) ─────────────────┤              │
+                                              │              │
+                             GND ─────────────┤ GND (Pin 12) │
+                                              └──────────────┘
+                             J9.1 ── GND
+                             J9.2 ── VCC
+                             J1–J8 Pin 1 ── GND
+                             J1–J8 Pin 2 ── VCC
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ COMPONENT SUMMARY
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Ref   Value     Purpose
+  ────  ────────  ──────────────────────────────────────────────
+  U1    TCA9548A  1-to-8 I2C multiplexer
+  R1    10kΩ      RESET pull-up to VCC (active LOW, held inactive)
+  R2    10kΩ      Upstream SDA pull-up to VCC
+  R3    10kΩ      Upstream SCL pull-up to VCC
+  C1    10µF      Bulk bypass capacitor (electrolytic)
+  C2    0.1µF     High-freq decoupling capacitor (ceramic)
+  SW1   SPST      A0 address select (closed = GND = LOW)
+  SW2   SPST      A1 address select (closed = GND = LOW)
+  SW3   SPST      A2 address select (closed = GND = LOW)
+  J9    CON5      Upstream I2C + RESET + power (5-pin)
+  J1    CON4      Downstream CH0 (GND, VCC, SCL0, SDA0)
+  J2    CON4      Downstream CH1 (GND, VCC, SCL1, SDA1)
+  J3    CON4      Downstream CH2 (GND, VCC, SCL2, SDA2)
+  J4    CON4      Downstream CH3 (GND, VCC, SCL3, SDA3)
+  J5    CON4      Downstream CH4 (GND, VCC, SCL4, SDA4)
+  J6    CON4      Downstream CH5 (GND, VCC, SCL5, SDA5)
+  J7    CON4      Downstream CH6 (GND, VCC, SCL6, SDA6)
+  J8    CON4      Downstream CH7 (GND, VCC, SCL7, SDA7)
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+ NOTES FOR SWITCHING CONTROLLER PROJECT
+═══════════════════════════════════════════════════════════════════════════════════
+
+  - SW1–SW3 all closed → address 0x70
+  - Upstream I2C (J9) connects to EX-CSB1 QWiic (3.3V logic)
+  - Downstream CH0 (J1) connects to bidirectional level shifter → Arduino Mega
+  - The switching controller (I2C slave 0x65) lives on CH0
+  - Downstream channels CH1–CH7 (J2–J8) are available for future I2C devices
+  - R2/R3 provide pull-ups on the upstream bus only; downstream devices must
+    supply their own pull-ups or rely on the connected device's internal pull-ups
+  - RESET can be driven LOW from J9 pin 5 to reset the multiplexer and
+    disconnect all downstream channels
+```

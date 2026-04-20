@@ -267,35 +267,35 @@ Pin assignments are defined in `include/pinLayout.h`.
  PIN USAGE SUMMARY
 ═══════════════════════════════════════════════════════════════════════════════════
 
-  Pin   Function              Pin   Function
-  ────  ──────────────────    ────  ──────────────────
-  0     (Serial RX)           22    T0 IN1
-  1     (Serial TX)           23    T0 IN2
-  2     Encoder CLK (INT4)    24    T1 IN1
-  3     Encoder DT (INT5)     25    T1 IN2
-  4     BTN COL2              26    T2 IN1
-  5     BTN COL1              27    T2 IN2
-  6     BTN COL0              28    T3 IN1
-  7     BTN ROW3              29    T3 IN2
-  8     Encoder SW             30    T4 IN1
-  9     LED Data              31    T4 IN2
-  10    BTN ROW2              32    T7 IN1
-  11    BTN ROW1              33    T7 IN2
-  12    BTN ROW0              34    T5 IN1
+  Pin   Function                Pin   Function
+  ────  ──────────────────      ────  ──────────────────
+  0     (Serial RX)             22    T0 IN1
+  1     (Serial TX)             23    T0 IN2
+  2     Encoder CLK (INT4)      24    T1 IN1
+  3     Encoder DT (INT5)       25    T1 IN2
+  4     BTN COL2                26    T2 IN1
+  5     BTN COL1                27    T2 IN2
+  6     BTN COL0                28    T3 IN1
+  7     BTN ROW3                29    T3 IN2
+  8     Encoder SW              30    T4 IN1
+  9     LED Data                31    T4 IN2
+  10    BTN ROW2                32    T7 IN1
+  11    BTN ROW1                33    T7 IN2
+  12    BTN ROW0                34    T5 IN1
   13    (unused - on-board LED) 35  T5 IN2
-  14    FRAM SDA (sw I2C)     36    T6 IN1
-  15    FRAM SCL (sw I2C)     37    T6 IN2
-  16    (free)                38    T9 IN1
-  17    (free)                39    T9 IN2
-  18    (free)                40    T10 IN1
-  19    (free)                41    T10 IN2
-  20    I2C SDA (DCC-EX)      42    T8 IN1
-  21    I2C SCL (DCC-EX)      43    T8 IN2
-                              44    T11 IN1
-  46    LCD RS                45    T11 IN2
+  14    FRAM SDA (sw I2C)       36    T6 IN1
+  15    FRAM SCL (sw I2C)       37    T6 IN2
+  16    (free)                  38    T9 IN1
+  17    (free)                  39    T9 IN2
+  18    (free)                  40    T10 IN1
+  19    (free)                  41    T10 IN2
+  20    I2C SDA (DCC-EX)        42    T8 IN1
+  21    I2C SCL (DCC-EX)        43    T8 IN2
+                                44    T11 IN1
+  46    LCD RS                  45    T11 IN2
   47    LCD E
-  48    LCD D4                50    LCD D6
-  49    LCD D5                51    LCD D7
+  48    LCD D4                  50    LCD D6
+  49    LCD D5                  51    LCD D7
 
   Pins 14-15: software I2C master bus to MB85RC256V FRAM (addr 0x50)
   Pins 16-19: free for future use
