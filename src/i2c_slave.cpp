@@ -240,7 +240,7 @@ void processI2CCommands()
   }
 
   renderAllTurnoutLeds();
-  t.pendingEepromSave = true;
+  t.pendingStorageSave = true;
   motorActivate(t);
 
   // LCD feedback

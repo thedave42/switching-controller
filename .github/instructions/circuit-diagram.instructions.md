@@ -191,21 +191,22 @@ Pin assignments are defined in `include/pinLayout.h`.
   11    BTN ROW1              33    T7 IN2
   12    BTN ROW0              34    T5 IN1
   13    (unused - on-board LED) 35  T5 IN2
-  14    (free)                36    T6 IN1
-  15    (free)                37    T6 IN2
+  14    FRAM SDA (sw I2C)     36    T6 IN1
+  15    FRAM SCL (sw I2C)     37    T6 IN2
   16    (free)                38    T9 IN1
   17    (free)                39    T9 IN2
   18    (free)                40    T10 IN1
   19    (free)                41    T10 IN2
-  20    (I2C SDA - reserved)  42    T8 IN1
-  21    (I2C SCL - reserved)  43    T8 IN2
+  20    I2C SDA (DCC-EX)      42    T8 IN1
+  21    I2C SCL (DCC-EX)      43    T8 IN2
                               44    T11 IN1
   46    LCD RS                45    T11 IN2
   47    LCD E
   48    LCD D4                50    LCD D6
   49    LCD D5                51    LCD D7
 
-  Pins 14-19: free for future use
-  Pins 20-21: reserved for I2C (FRAM module)
+  Pins 14-15: software I2C master bus to MB85RC256V FRAM (addr 0x50)
+  Pins 16-19: free for future use
+  Pins 20-21: hardware TWI, reserved for DCC-EX I2C slave role (addr 0x65)
   Pin 13: avoid for data signals (on-board LED)
 ```
