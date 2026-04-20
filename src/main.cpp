@@ -233,19 +233,30 @@ uint8_t framWrite8(uint16_t addr, uint8_t val)
 }
 
 // Write-then-read a scratch byte above our persistent region to verify the
-// FRAM is wired up and responds correctly. Preserves the original byte.
+// FRAM is wired up and responds correctly. Always restores the original
+// byte before returning, including on failure paths.
 bool framProbe()
 {
   const uint16_t probeAddr = 0x7FFF; // last byte of 32KB
   uint8_t original = framRead8(probeAddr);
   const uint8_t pattern1 = 0xA5;
   const uint8_t pattern2 = 0x5A;
+  bool ok = true;
+
   framWrite8(probeAddr, pattern1);
-  if (framRead8(probeAddr) != pattern1) return false;
-  framWrite8(probeAddr, pattern2);
-  if (framRead8(probeAddr) != pattern2) return false;
+  if (framRead8(probeAddr) != pattern1)
+  {
+    ok = false;
+  }
+  else
+  {
+    framWrite8(probeAddr, pattern2);
+    if (framRead8(probeAddr) != pattern2)
+      ok = false;
+  }
+
   framWrite8(probeAddr, original);
-  return true;
+  return ok;
 }
 
 // --- FRAM: CRC8 over a range of storage bytes ---
@@ -274,14 +285,17 @@ void storageSaveTurnout(uint8_t index)
   uint8_t addr = STORAGE_ADDR_DATA + (index * STORAGE_BYTES_PER_TURNOUT);
   // Encode state in bit 0, reversed in bit 1
   uint8_t stateByte = (uint8_t)turnouts[index].state | (turnouts[index].reversed ? 0x02 : 0x00);
+  // Capture the first non-zero I2C status so the logged code is a real
+  // endTransmission() result rather than a meaningless OR of several.
   uint8_t err = 0;
-  err |= framWrite8(addr + 0, stateByte);
-  err |= framWrite8(addr + 1, turnouts[index].inLedIdx);
-  err |= framWrite8(addr + 2, turnouts[index].straightLedIdx);
-  err |= framWrite8(addr + 3, turnouts[index].turnLedIdx);
+  uint8_t s;
+  if (!err && (s = framWrite8(addr + 0, stateByte))) err = s;
+  if (!err && (s = framWrite8(addr + 1, turnouts[index].inLedIdx))) err = s;
+  if (!err && (s = framWrite8(addr + 2, turnouts[index].straightLedIdx))) err = s;
+  if (!err && (s = framWrite8(addr + 3, turnouts[index].turnLedIdx))) err = s;
   // Recompute and save CRC over entire data block
   uint8_t crc = storageCRC8(STORAGE_ADDR_DATA, STORAGE_BYTES_PER_TURNOUT * NUM_BUTTONS);
-  err |= framWrite8(STORAGE_ADDR_CRC, crc);
+  if (!err && (s = framWrite8(STORAGE_ADDR_CRC, crc))) err = s;
   if (err)
   {
     Serial.print("FRAM: save failed for turnout ");
@@ -297,19 +311,20 @@ void storageSaveAll()
 {
   if (!framAvailable) return;
   uint8_t err = 0;
-  err |= framWrite8(STORAGE_ADDR_MAGIC, STORAGE_MAGIC);
-  err |= framWrite8(STORAGE_ADDR_VERSION, STORAGE_VERSION);
+  uint8_t s;
+  if (!err && (s = framWrite8(STORAGE_ADDR_MAGIC, STORAGE_MAGIC))) err = s;
+  if (!err && (s = framWrite8(STORAGE_ADDR_VERSION, STORAGE_VERSION))) err = s;
   for (uint8_t i = 0; i < NUM_BUTTONS; i++)
   {
     uint8_t addr = STORAGE_ADDR_DATA + (i * STORAGE_BYTES_PER_TURNOUT);
     uint8_t stateByte = (uint8_t)turnouts[i].state | (turnouts[i].reversed ? 0x02 : 0x00);
-    err |= framWrite8(addr + 0, stateByte);
-    err |= framWrite8(addr + 1, turnouts[i].inLedIdx);
-    err |= framWrite8(addr + 2, turnouts[i].straightLedIdx);
-    err |= framWrite8(addr + 3, turnouts[i].turnLedIdx);
+    if (!err && (s = framWrite8(addr + 0, stateByte))) err = s;
+    if (!err && (s = framWrite8(addr + 1, turnouts[i].inLedIdx))) err = s;
+    if (!err && (s = framWrite8(addr + 2, turnouts[i].straightLedIdx))) err = s;
+    if (!err && (s = framWrite8(addr + 3, turnouts[i].turnLedIdx))) err = s;
   }
   uint8_t crc = storageCRC8(STORAGE_ADDR_DATA, STORAGE_BYTES_PER_TURNOUT * NUM_BUTTONS);
-  err |= framWrite8(STORAGE_ADDR_CRC, crc);
+  if (!err && (s = framWrite8(STORAGE_ADDR_CRC, crc))) err = s;
   if (err)
   {
     Serial.print("FRAM: saveAll failed (I2C status ");
@@ -903,7 +918,11 @@ void setup()
 
   // Load FRAM config BEFORE motor initialization
   // This overrides hardcoded state and LED indices with saved values
-  if (!storageLoad())
+  if (!framAvailable)
+  {
+    Serial.println("FRAM: unavailable, using hardcoded defaults");
+  }
+  else if (!storageLoad())
   {
     Serial.println("FRAM: first boot, saving defaults");
     storageSaveAll();
