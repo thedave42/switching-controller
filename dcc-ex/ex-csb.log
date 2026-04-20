@@ -1,0 +1,103 @@
+ets Jul 29 2019 12:21:46
+
+rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:1
+load:0x3fff0030,len:1344
+load:0x40078000,len:13964
+load:0x40080400,len:3600
+entry 0x400805f0
+<* License GPLv3 fsf.org (c) dcc-ex.com *>
+<* I2CManager: Using Wire library *>
+<* I2C Device found at 0x3C, OLED Display or HMC583L Magnetometer? *>
+<* SwitchCtrl I2C:0x65 device not found *>
+<* MCP23017 I2C:0x20 Device not detected *>
+<* MCP23017 I2C:0x21 Device not detected *>
+<* Fault pin = 19 invert 0 *>
+<* Pin 34 Max 4998mA (2245) *>
+<* Fault pin = 23 invert 0 *>
+<* Pin 35 Max 4998mA (2245) *>
+<* Channel 0 DCC signal for MAIN start *>
+<= A MAIN>
+<p0 A>
+<p0 B>
+<p0>
+<@ 0 2 "PWR Off">
+<* Channel 2 DCC signal for PROG start *>
+<= B PROG>
+<p0 A>
+<p0 B>
+<p0>
+<@ 0 2 "PWR Off">
+<* 132x64 OLED display configured on I2C:0x3c *>
+<@ 0 0 "DCC-EX v5.4.19">
+<@ 0 1 "Lic GPLv3">
+<* Wifi in AP mode *>
+<@ 0 5 "Wifi: DCCEX_dde48c">
+<@ 0 6 "PASS: PASS_dde48c">
+<@ 0 7 "IP: 192.168.4.1">
+<* Server will be started on port 2560 *>
+<iDCC-EX V-5.4.19 / ESP32 / EXCSB1 G-devel-202511252013Z>
+<* EXRAIL 18b, fl=256, stash=0 *>
+<* SETUP("<T 1 VPIN 800>") *>
+<O>
+<* SETUP("<T 2 VPIN 801>") *>
+<O>
+<* SETUP("<T 3 VPIN 802>") *>
+<O>
+<* SETUP("<T 4 VPIN 803>") *>
+<O>
+<* SETUP("<T 5 VPIN 804>") *>
+<O>
+<* SETUP("<T 6 VPIN 805>") *>
+<O>
+<* SETUP("<T 7 VPIN 806>") *>
+<O>
+<* SETUP("<T 8 VPIN 807>") *>
+<O>
+<* SETUP("<T 9 VPIN 808>") *>
+<O>
+<* SETUP("<T 10 VPIN 809>") *>
+<O>
+<* SETUP("<T 11 VPIN 810>") *>
+<O>
+<* SETUP("<T 12 VPIN 811>") *>
+<O>
+<@ 0 3 "Ready">
+<p0 A>
+<p0 B>
+<p0>
+<@ 0 2 "PWR Off">
+<@ 0 3 "Free RAM=225488b">
+<= A MAIN>
+<p0 A>
+<p0 B>
+<p0>
+<@ 0 2 "PWR Off">
+<@ 0 3 "Free RAM=225464b">
+<= B PROG>
+<p0 A>
+<p0 B>
+<p0>
+<@ 0 2 "PWR Off">
+<@ 0 3 "Free RAM=224696b">
+<@ 0 3 "Free RAM=223540b">
+<@ 0 3 "Free RAM=222868b">
+<@ 0 3 "Free RAM=222364b">
+<* New client 0, 192.168.4.2:33213 *>
+<@ 0 3 "Free RAM=219428b">
+<p0 A>
+<p0 B>
+<p0>
+<@ 0 2 "PWR Off">
+<@ 0 3 "Free RAM=217520b">
+<* Arduino Vpins:2-39 *>
+<* SwitchCtrl I2C:0x65 v0.0.0 Vpins:800-811 OFFLINE *>
+<* PCA9685 I2C:0x40 Configured on Vpins:100-115 OFFLINE *>
+<* PCA9685 I2C:0x41 Configured on Vpins:116-131 OFFLINE *>
+<* MCP23017 I2C:0x20 Configured on Vpins:164-179 OFFLINE *>
+<* MCP23017 I2C:0x21 Configured on Vpins:180-195 OFFLINE *>
+<H 1 1>
+<H 1 0>
+<H 1 1>

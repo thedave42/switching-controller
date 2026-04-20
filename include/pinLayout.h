@@ -25,6 +25,8 @@ ButtonMatrix Definitions
 #define BTN_COL1 5
 #define BTN_COL2 4
 
+#define NUM_BUTTONS (BTN_ROWS * BTN_COLS)
+
 // PL9823 LEDs (WS2812B-compatible, 3 per turnout × 12 turnouts = 36)
 // Requires 330Ω series resistor on data line and 470-1000µF cap on LED power
 #define NUM_LEDS 36
@@ -71,5 +73,10 @@ ButtonMatrix Definitions
 #define LCD_D5 49
 #define LCD_D6  50
 #define LCD_D7  51
+
+// I2C (DCC-EX communication)
+// Pins 20/21 are the hardware I2C (TWI) pins on the ATmega2560
+#define I2C_SDA 20
+#define I2C_SCL 21
 
 #endif // PINLAYOUT_H

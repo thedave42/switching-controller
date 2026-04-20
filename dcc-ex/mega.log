@@ -1,0 +1,35 @@
+␀EEPROM: loaded
+Turnout 0 initialized to STRAIGHT with button index 5
+Turnout 1 initialized to TURN with button index 0
+Turnout 2 initialized to TURN with button index 4
+Turnout 3 initialized to STRAIGHT with button index 1
+Turnout 4 initialized to STRAIGHT with button index 6
+Turnout 5 initialized to STRAIGHT with button index 3
+Turnout 6 initialized to TURN with button index 2
+Turnout 7 initialized to STRAIGHT with button index 9
+Turnout 8 initialized to STRAIGHT with button index 10
+Turnout 9 initialized to STRAIGHT with button index 8
+Turnout 10 initialized to STRAIGHT with button index 11
+Turnout 11 initialized to TURN with button index 7
+I2C slave started at 0x65
+  TWAR=0xCA (expected addr byte: 0xCA)
+  TWCR=0x45 TWSR=0xF8
+  SDA pin 20 state=1  SCL pin 21 state=1
+  Configured turnouts: 12
+Setup complete
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=0 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1
+I2C heartbeat: rx=0 tx=0 SDA=1 SCL=1

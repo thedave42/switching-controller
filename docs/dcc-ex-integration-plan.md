@@ -323,55 +323,30 @@ If the Arduino Mega is not connected or not powered, the device will show `OFFLI
 
 #### Step 6: Define the turnouts
 
-The turnouts can be defined by creating a `mySetup.h` file (a new tab in the Arduino IDE, same process as Step 2), or by entering the commands interactively through the Serial Monitor.
+Turnouts must be defined using `PIN_TURNOUT()` in a `myAutomation.h` file so they are visible in WiThrottle apps (Engine Driver, wiThrottle) and JMRI. Turnouts defined via `SETUP("<T id VPIN vpin>")` in `mySetup.h` work for serial commands but are **not advertised** to WiThrottle clients.
 
-**Option A — `mySetup.h` file (persistent across rebuilds):**
+Create a `myAutomation.h` file (a new tab in the Arduino IDE, same process as Step 2) with the following content:
 
 ```cpp
-// mySetup.h — Turnout definitions for Switching Controller
-// Each SETUP() command maps a DCC-EX turnout ID to a VPIN.
+// myAutomation.h — EXRAIL definitions for Switching Controller turnouts
+// PIN_TURNOUT defines turnouts visible in Engine Driver, wiThrottle, and JMRI.
 // VPIN 800 = turnout array index 0 (T01), 801 = index 1 (T02), etc.
 
-SETUP("<T 1 VPIN 800>");    // T01 → VPIN 800 → turnout index 0
-SETUP("<T 2 VPIN 801>");    // T02 → VPIN 801 → turnout index 1
-SETUP("<T 3 VPIN 802>");    // T03 → VPIN 802 → turnout index 2
-SETUP("<T 4 VPIN 803>");    // T04 → VPIN 803 → turnout index 3
-SETUP("<T 5 VPIN 804>");    // T05 → VPIN 804 → turnout index 4
-SETUP("<T 6 VPIN 805>");    // T06 → VPIN 805 → turnout index 5
-SETUP("<T 7 VPIN 806>");    // T07 → VPIN 806 → turnout index 6
-SETUP("<T 8 VPIN 807>");    // T08 → VPIN 807 → turnout index 7
-SETUP("<T 9 VPIN 808>");    // T09 → VPIN 808 → turnout index 8
-SETUP("<T 10 VPIN 809>");   // T10 → VPIN 809 → turnout index 9
-SETUP("<T 11 VPIN 810>");   // T11 → VPIN 810 → turnout index 10
-SETUP("<T 12 VPIN 811>");   // T12 → VPIN 811 → turnout index 11
+PIN_TURNOUT(1, 800, "T01")
+PIN_TURNOUT(2, 801, "T02")
+PIN_TURNOUT(3, 802, "T03")
+PIN_TURNOUT(4, 803, "T04")
+PIN_TURNOUT(5, 804, "T05")
+PIN_TURNOUT(6, 805, "T06")
+PIN_TURNOUT(7, 806, "T07")
+PIN_TURNOUT(8, 807, "T08")
+PIN_TURNOUT(9, 808, "T09")
+PIN_TURNOUT(10, 809, "T10")
+PIN_TURNOUT(11, 810, "T11")
+PIN_TURNOUT(12, 811, "T12")
 ```
 
-If using `mySetup.h`, upload the software again for the changes to take effect.
-
-**Option B — Serial Monitor (interactive, saved to EEPROM):**
-
-Enter each turnout definition command in the Serial Monitor:
-
-```
-<T 1 VPIN 800>
-<T 2 VPIN 801>
-<T 3 VPIN 802>
-<T 4 VPIN 803>
-<T 5 VPIN 804>
-<T 6 VPIN 805>
-<T 7 VPIN 806>
-<T 8 VPIN 807>
-<T 9 VPIN 808>
-<T 10 VPIN 809>
-<T 11 VPIN 810>
-<T 12 VPIN 811>
-```
-
-Then save the definitions to EEPROM so they persist across restarts:
-
-```
-<E>
-```
+Upload the software again for the changes to take effect. You do **not** need a `mySetup.h` file — `PIN_TURNOUT()` in `myAutomation.h` replaces the `SETUP("<T id VPIN vpin>")` definitions entirely.
 
 #### Step 7: Use the turnouts
 

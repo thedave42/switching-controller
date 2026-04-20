@@ -1,14 +1,3 @@
-# DCC-EX Developer and API Reference Documentation
-
-## Documentation links
-
-(DCC-EX Native API Reference)[https://dcc-ex.com/reference/developers/api.html#dcc-ex-native-api-reference]
-(DCC-EX HAL Architecture)[https://dcc-ex.com/reference/developers/hal.html]
-(I/O Device Drivers and HAL)[https://dcc-ex.com/reference/developers/hal-config.html]
-(Writing a HAL Driver)[https://dcc-ex.com/reference/developers/writing-hal-driver.html]
-(EX-CSB1 Operating Manual)[https://dcc-ex.com/ex-commandstation/rtr-manual__included-esb1.html]
-(EX-CSB1 Board Schematics)[https://github.com/DCC-EX/EX-CSB1]
-
 # EX-CSB1 I2C Connector Pinouts
 
 Pin assignments derived from the EX-CSB1 KiCad schematic (`EX-CSB1.kicad_sch`) in the [DCC-EX/EX-CSB1](https://github.com/DCC-EX/EX-CSB1) repository.
@@ -25,8 +14,8 @@ Connector: JST-SH 4-pin, 1mm pitch (`SM04B-SRSS-TB`)
 |-----|--------|---------|
 | 1 | GND | — |
 | 2 | +3.3V | 3.3V |
-| 3 | SCL | 3.3V |
-| 4 | SDA | 3.3V |
+| 3 | SDA | 3.3V |
+| 4 | SCL | 3.3V |
 
 ## OLED I2C Header (J111)
 
@@ -47,8 +36,8 @@ Connector: 2×4 pin header, 2.54mm pitch (two identical I2C ports side by side)
 |----------|--------|-----------|--------|
 | 1 | +3.3V | 2 | +3.3V |
 | 3 | SDA | 4 | SDA |
-| 5 | SCL | 6 | SCL |
-| 7 | GND | 8 | GND |
+| 5 | GND | 6 | GND |
+| 7 | SCL | 8 | SCL |
 
 ## I2C Solder Jumper Pads (JP101, JP102)
 
