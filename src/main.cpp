@@ -822,10 +822,18 @@ void setup()
 
     Serial.print("Turnout ");
     Serial.print(i);
-    Serial.print(" initialized to ");
+    Serial.print(" state=");
     Serial.print(turnouts[i].state == STRAIGHT ? "STRAIGHT" : "TURN");
-    Serial.print(" with button index ");
-    Serial.println(turnouts[i].buttonIndex);
+    Serial.print(" btn=");
+    Serial.print(turnouts[i].buttonIndex);
+    Serial.print(" LEDs(in=");
+    Serial.print(turnouts[i].inLedIdx);
+    Serial.print(" st=");
+    Serial.print(turnouts[i].straightLedIdx);
+    Serial.print(" tn=");
+    Serial.print(turnouts[i].turnLedIdx);
+    Serial.print(") reversed=");
+    Serial.println(turnouts[i].reversed ? "Y" : "N");
 
     // Drive motor to saved state (with safety timer backstop)
     if (turnouts[i].state == STRAIGHT)
