@@ -1,0 +1,3 @@
+[submodule "CommandStation-EX"]
+	path = CommandStation-EX
+	url = https://github.com/thedave42/CommandStation-EX.git
