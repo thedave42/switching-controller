@@ -80,7 +80,7 @@ bool blinkOn = false;
 // --- Forward declarations ---
 Turnout *findTurnoutByButton(uint8_t buttonNum);
 void configureTurnout(uint8_t index, uint8_t buttonIndex, uint8_t in1, uint8_t in2,
-                      uint8_t inLed, uint8_t straightLed, uint8_t turnLed, const char *name);
+                      uint8_t inLed, uint8_t straightLed, uint8_t turnLed, bool reversed, const char *name);
 void onButtonAction(Button &button);
 void switchOff(int, int);
 void switchStraight(int, int);
@@ -159,11 +159,11 @@ Turnout *findTurnoutByButton(uint8_t buttonNum)
 
 // --- Helper: configure a turnout with sensible defaults ---
 void configureTurnout(uint8_t index, uint8_t buttonIndex, uint8_t in1, uint8_t in2,
-                      uint8_t inLed, uint8_t straightLed, uint8_t turnLed, const char *name)
+                      uint8_t inLed, uint8_t straightLed, uint8_t turnLed, bool reversed, const char *name)
 {
   turnouts[index] = {buttonIndex, in1, in2, STRAIGHT,
                      inLed, straightLed, turnLed,
-                     true, false, false, 0, 0, false, name};
+                     true, reversed, false, 0, 0, false, name};
 }
 
 // --- LED rendering: set all LEDs based on current turnout state ---
@@ -786,19 +786,32 @@ void setup()
   FastLED.setBrightness(brightness);
 
   // Define turnouts with hardcoded defaults
-  // (index, buttonIndex, in1, in2, inLed, straightLed, turnLed, name)
-  configureTurnout(0,  5,  T0_IN1,  T0_IN2,   0,  2,  1, "Industry Entry");
-  configureTurnout(1,  0,  T1_IN1,  T1_IN2,   3,  5,  4, "Industry Exit");
-  configureTurnout(2,  4,  T2_IN1,  T2_IN2,   6,  8,  7, "Siding Entry");
-  configureTurnout(3,  1,  T3_IN1,  T3_IN2,   9, 11, 10, "Siding Exit");
-  configureTurnout(4,  6,  T4_IN1,  T4_IN2,  12, 14, 13, "Industry Warehouse");
-  configureTurnout(5,  3,  T5_IN1,  T5_IN2,  15, 17, 16, "Runaround Entry");
-  configureTurnout(6,  2,  T6_IN1,  T6_IN2,  18, 20, 19, "Runaround Exit");
-  configureTurnout(7,  9,  T7_IN1,  T7_IN2,  21, 23, 22, "Staging 2 & 3");
-  configureTurnout(8, 10,  T8_IN1,  T8_IN2,  24, 26, 25, "Staging 2/3 Entry");
-  configureTurnout(9,  8,  T9_IN1,  T9_IN2,  27, 29, 28, "Yard Entry");
-  configureTurnout(10, 11, T10_IN1, T10_IN2,  30, 32, 31, "Yard Exit");
-  configureTurnout(11,  7, T11_IN1, T11_IN2,  33, 35, 34, "Staging 1");
+  // (index, buttonIndex, in1, in2, inLed, straightLed, turnLed, reversed, name)
+  // Turnout 0 state=STRAIGHT btn=5 LEDs(in=15 st=17 tn=16) reversed=Y
+  // Turnout 1 state=STRAIGHT btn=0 LEDs(in=0 st=2 tn=1) reversed=N
+  // Turnout 2 state=STRAIGHT btn=4 LEDs(in=12 st=14 tn=13) reversed=Y
+  // Turnout 3 state=STRAIGHT btn=1 LEDs(in=3 st=5 tn=4) reversed=N
+  // Turnout 4 state=STRAIGHT btn=6 LEDs(in=18 st=20 tn=19) reversed=Y
+  // Turnout 5 state=STRAIGHT btn=3 LEDs(in=9 st=11 tn=10) reversed=Y
+  // Turnout 6 state=TURN btn=2 LEDs(in=8 st=6 tn=7) reversed=N
+  // Turnout 7 state=STRAIGHT btn=9 LEDs(in=23 st=21 tn=22) reversed=N
+  // Turnout 8 state=TURN btn=10 LEDs(in=24 st=26 tn=25) reversed=Y
+  // Turnout 9 state=TURN btn=8 LEDs(in=30 st=32 tn=31) reversed=N
+  // Turnout 10 state=TURN btn=11 LEDs(in=35 st=33 tn=34) reversed=Y
+  // Turnout 11 state=TURN btn=7 LEDs(in=27 st=29 tn=28) reversed=N
+
+  configureTurnout(0,  5,  T0_IN1,  T0_IN2,  15, 17, 16, true,  "Industry Entry");
+  configureTurnout(1,  0,  T1_IN1,  T1_IN2,   0,  2,  1, false, "Industry Exit");
+  configureTurnout(2,  4,  T2_IN1,  T2_IN2,  12, 14, 13, true,  "Siding Entry");
+  configureTurnout(3,  1,  T3_IN1,  T3_IN2,   3,  5,  4, false, "Siding Exit");
+  configureTurnout(4,  6,  T4_IN1,  T4_IN2,  18, 20, 19, true,  "Industry Warehouse");
+  configureTurnout(5,  3,  T5_IN1,  T5_IN2,   9, 11, 10, true,  "Runaround Entry");
+  configureTurnout(6,  2,  T6_IN1,  T6_IN2,   8,  6,  7, false, "Runaround Exit");
+  configureTurnout(7,  9,  T7_IN1,  T7_IN2,  23, 21, 22, false, "Staging 2 & 3");
+  configureTurnout(8, 10,  T8_IN1,  T8_IN2,  24, 26, 25, true,  "Staging 2/3 Entry");
+  configureTurnout(9,  8,  T9_IN1,  T9_IN2,  30, 32, 31, false, "Yard Entry");
+  configureTurnout(10, 11, T10_IN1, T10_IN2,  35, 33, 34, true,  "Yard Exit");
+  configureTurnout(11,  7, T11_IN1, T11_IN2,  27, 29, 28, false, "Staging 1");
 
   // Load EEPROM config BEFORE motor initialization
   // This overrides hardcoded state and LED indices with saved values
@@ -822,10 +835,18 @@ void setup()
 
     Serial.print("Turnout ");
     Serial.print(i);
-    Serial.print(" initialized to ");
+    Serial.print(" state=");
     Serial.print(turnouts[i].state == STRAIGHT ? "STRAIGHT" : "TURN");
-    Serial.print(" with button index ");
-    Serial.println(turnouts[i].buttonIndex);
+    Serial.print(" btn=");
+    Serial.print(turnouts[i].buttonIndex);
+    Serial.print(" LEDs(in=");
+    Serial.print(turnouts[i].inLedIdx);
+    Serial.print(" st=");
+    Serial.print(turnouts[i].straightLedIdx);
+    Serial.print(" tn=");
+    Serial.print(turnouts[i].turnLedIdx);
+    Serial.print(") reversed=");
+    Serial.println(turnouts[i].reversed ? "Y" : "N");
 
     // Drive motor to saved state (with safety timer backstop)
     if (turnouts[i].state == STRAIGHT)
