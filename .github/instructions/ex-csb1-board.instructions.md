@@ -21,6 +21,74 @@ opto-isolated booster-sync input round out the I/O.
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
+ PHYSICAL BOARD LAYOUT (top view, component side)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Derived from the KiCad PCB file (EX-CSB1.kicad_pcb).
+  Board dimensions: ~66 × 53 mm, rounded corners.
+  All connector positions and orientations reflect the actual PCB placement.
+
+  Arduino UNO–compatible shield headers run along the top and bottom edges
+  (J107/J113 on top, J108/J204/J112 on bottom). The USB-C connector and
+  reset button are on the right edge. Screw terminals (J101, J103, J110)
+  and the Stemma QT connector (J105) are on the left side.
+
+   TOP EDGE
+   ┌───────────────────────────────────────────────────────────────────┐
+   │ J110      J111   J107         JP1/2  J106       J113              │
+   │ Booster   OLED   DigHigh 10p  SDA/   DualI2C    DigLow 8p         │
+   │ Sync 2p   I2C    ═══════════  SCL    2×4 hdr    ═══════════       │
+   │ ┌──┐      4p     [scl..d8]   jumpers [+3V3      [d7..d0]          │
+   │ │BC│      ┌──┐                       sda gnd                      │
+   │ │BD│      │  │                        scl]                        │
+   │ └──┘      └──┘                                  U105 U106         │
+   │                     U102                         USBLC6 CH340     │
+   │ J105              DRV8874      U202                    Q101       ├─ J114
+   │ QWiic            (MAIN/A)     AMS1117             D105○ R/SW      ├ USB-C
+   │ ┌──┐                                            (blue) ┌─┐        │
+   │ └──┘                                                   └─┘        │
+   │                                                  SW101 reset      │
+   │ J101               U101                                           │
+   │ MAIN              DRV8874      D202○ D205○                        │
+   │ Track             (PROG/B)     (+5V)  (+3V3)                      │
+   │ ┌──┐                                                              │
+   │ │A1│                           U104                               │
+   │ │A2│                          TLP2361            U103             │
+   │ └──┘                                       ESP32-WROOM-32E        │
+   │                                             ┌─────────────┐       │
+   │ J103                                        │             │       │
+   │ PROG                           L201         │   ESP32     │       │
+   │ Track            Q201          15µH         │   module    │       │
+   │ ┌──┐            AO4407C                     │             │       │
+   │ │B1│                           U201         │             │       │
+   │ │B2│                          TPS54302      │             │       │
+   │ └──┘                          (buck)        └─────────────┘       │
+   │            J201                                                   │
+   │         Barrel Jack                                               │
+   │         (DC input)  C201–C203 bulk                                │
+   │             ┌─┐                                                   │
+   │             └─┘                                                   │
+   │         J108          J204        J112                            │
+   │         Power 8p      VM tap 4p   Analog 6p                       │
+   │         ═══════════   ═══════     ═══════════                     │
+   │         [ioref..vin]  [VM×3 GND]  [a0..a5]                        │
+   └───────────────────────────────────────────────────────────────────┘
+   BOTTOM EDGE
+
+  Legend:
+    ○ = status LED       ┌──┐ = Phoenix screw terminal (2-pin, side-entry)
+    ┌─┐ = tactile switch ═══ = pin socket header (through-hole)
+    ┌──┐ = JST connector  2×4 hdr = dual-row pin header
+
+  Connector quick-reference (pin 1 marked on PCB silkscreen):
+    J101 (MAIN):  B1=out1a, B2=out2a     J103 (PROG):  B1=out1b, B2=out2b
+    J110 (Boost): B-C, B-D               J105 (QWiic): GND,+3V3,SDA,SCL
+    J111 (OLED):  GND,+3V3,SCL,SDA       J114 (USB-C): USB 2.0 data + VBUS
+    J201 (DC in): centre=+V, sleeve=GND  J204 (VM):    VM×3, GND
+    SW101: manual reset (active LOW)      JP101/JP102: I²C pull-up enables
+
+
+═══════════════════════════════════════════════════════════════════════════════════
  1. MAIN MCU — ESP32-WROOM-32E (U103)
 ═══════════════════════════════════════════════════════════════════════════════════
 
@@ -30,34 +98,36 @@ opto-isolated booster-sync input round out the I/O.
   strap. Both EN and IO0 are driven by the auto-program circuit Q101
   (see §6).
 
-                            ┌─────────────────────────────┐
-                  GND ─── 1 │ GND                     GND │ 38 ── GND
-                  VDD ─── 2 │ VDD                     GND │ 39 ── GND
-                  EN  ─── 3 │ EN  (reset_n)           GND │ 15 ── GND
-            SENSOR_VP ── 4 │ SENSOR_VP (a0)        TXD0 │ 35 ── USB_TX
-            SENSOR_VN ── 5 │ SENSOR_VN (a1)        RXD0 │ 34 ── USB_RX
-                IO34 ── 6 │ IO34 (sen_a)          IO0  │ 25 ── IO0_boot_option
-                IO35 ── 7 │ IO35 (sen_b)          IO2  │ 24 ── en/in1b
-                IO32 ── 8 │ IO32 (Railsync_in)    IO4  │ 26 ── direction_d (= d13)
-                IO33 ── 9 │ IO33 (d7)             IO5  │ 29 ── direction_c (= d12)
-                IO25 ──10 │ IO25 (nSleepa)        IO12 │ 14 ── brake_d
-                IO26 ──11 │ IO26 (pwm_c, d3)      IO13 │ 16 ── brake_c
-                IO27 ──12 │ IO27 (nSleepb)        IO14 │ 13 ── en/in1a
-                IO14 ──13 │ (also en/in1a)        IO15 │ 23 ── ph/in2b
-                IO12 ──14 │ (also brake_d)        IO16 │ 27 ── pwm_d (= d11)
-                IO13 ──16 │ (also brake_c)        IO17 │ 28 ── a5
-              SHD/SD2 ──17 │ flash               IO18 │ 30 ── a4
-              SWP/SD3 ──18 │ flash               IO19 │ 31 ── fault_n_a
-              SCS/CMD ──19 │ flash               IO21 │ 33 ── sda
-              SCK/CLK ──20 │ flash               IO22 │ 36 ── scl
-              SDO/SD0 ──21 │ flash               IO23 │ 37 ── fault_n_b
-              SDI/SD1 ──22 │ flash                NC  │ 32 ── (no connect)
-                            └─────────────────────────────┘
+                            ┌────────────────────────────────┐
+                  GND ─── 1 │ GND                        GND │ 38 ── GND
+                  VDD ─── 2 │ VDD                        GND │ 39 ── GND
+                  EN  ─── 3 │ EN  (reset_n)              GND │ 15 ── GND
+            SENSOR_VP ── 4  │ SENSOR_VP (a0/sen_c)     TXD0  │ 35 ── USB_RX (net)
+            SENSOR_VN ── 5  │ SENSOR_VN (a1/sen_d)     RXD0  │ 34 ── USB_TX (net)
+                IO34  ── 6  │ IO34 (sen_a)              IO0  │ 25 ── IO0_boot_option
+                IO35  ── 7  │ IO35 (sen_b)              IO2  │ 24 ── en/in1b
+                IO32  ── 8  │ IO32 (Railsync_in)        IO4  │ 26 ── direction_d (d13)
+                IO33  ── 9  │ IO33 (d7/esp_led)         IO5  │ 29 ── direction_c (d12)
+                IO25  ──10  │ IO25 (nSleepa)           IO12  │ 14 ── brake_d
+                IO26  ──11  │ IO26 (pwm_c, d3)         IO13  │ 16 ── brake_c
+                IO27  ──12  │ IO27 (nSleepb)           IO14  │ 13 ── en/in1a
+                IO14  ──13  │ (also en/in1a)           IO15  │ 23 ── ph/in2b
+                IO12  ──14  │ (also brake_d)           IO16  │ 27 ── pwm_d (d11)
+                IO13  ──16  │ (also brake_c)           IO17  │ 28 ── a5 / fault_n_d
+              SHD/SD2 ──17  │ flash                    IO18  │ 30 ── a4 / fault_n_c
+              SWP/SD3 ──18  │ flash                    IO19  │ 31 ── fault_n_a
+              SCS/CMD ──19  │ flash                    IO21  │ 33 ── sda
+              SCK/CLK ──20  │ flash                    IO22  │ 36 ── scl
+              SDO/SD0 ──21  │ flash                    IO23  │ 37 ── fault_n_b
+              SDI/SD1 ──22  │ flash                     NC   │ 32 ── (no connect)
+                            └────────────────────────────────┘
 
   Note: many ESP32 GPIOs serve a dual role — they are wired to both an
   Arduino-style header pin (e.g. J107 d11) and an internal peripheral
   (e.g. pwm_d on motor driver U101). The labels above show both names
-  where applicable.
+  where applicable. The USB_TX/USB_RX net labels follow the CH340C
+  (UART-bridge) perspective: USB_TX is the CH340C transmit line (→ ESP32
+  RXD0 pin 34), USB_RX is the CH340C receive line (→ ESP32 TXD0 pin 35).
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -82,10 +152,10 @@ opto-isolated booster-sync input round out the I/O.
   │   │                                                                  │
   │   ├── R201 100kΩ ──┐                                                 │
   │   │                ├── Q201 gate (AO4407C, P-MOSFET, reverse-polarity│
-  │   │                │   protection, source = +V, drain = VM rail)     │
+  │   │                │   protection, drain = +V input, source = VM)    │
   │   │                D201 (10V Zener, gate clamp)                      │
   │   │                                                                  │
-  │   └── (Q201 source; drain → VM rail)                                 │
+  │   └── (Q201 drain; source → VM rail)                                 │
   │                                                                      │
   │  GND (sleeve) ── GND                                                 │
   └──────────────────────────────────────────────────────────────────────┘
@@ -97,8 +167,8 @@ opto-isolated booster-sync input round out the I/O.
   │                                                                      │
   │   VIN (pin 3) ── VM                                                  │
   │   GND (pin 1) ── GND                                                 │
-  │   EN  (pin 5) ── (left to its internal default; not driven by ESP32)│
-  │   FB  (pin 4) ── feedback divider R202 (22k top) / R203 (13k3 btm)  │
+  │   EN  (pin 5) ── (left to its internal default; not driven by ESP32) │
+  │   FB  (pin 4) ── feedback divider R202 (100k top) / R203 (13k3 btm)  │
   │                  + C209 (56pF) feed-forward cap                      │
   │   SW  (pin 2) ── L201 15µH ── +5V rail                               │
   │   BOOT(pin 6) ── C204 → SW (bootstrap cap)                           │
@@ -106,7 +176,7 @@ opto-isolated booster-sync input round out the I/O.
   │   Input bulk caps : C205 10µF VM, C206 100n VM                       │
   │   Output bulk caps: C207 47µF, C208 47µF (on +5V rail)               │
   │                                                                      │
-  │   D202 (LED + R204 5k1) — "+5V present" status LED                  │
+  │   D202 (LED + R204 13k3) — "+5V present" status LED                  │
   └──────────────────────────────────────────────────────────────────────┘
                               │
                               +5V
@@ -120,14 +190,14 @@ opto-isolated booster-sync input round out the I/O.
                               │
                             +5V_vreg
                               │
-                              C210 100n (decoupling)
+                              C210 47µF (bulk / decoupling)
                               │
   ┌──────────────────────────────────────────────────────────────────────┐
   │                     AMS1117-3.3 LDO (U202)                           │
   │                                                                      │
   │   VI  (pin 3) ── +5V_vreg                                            │
   │   GND (pin 1) ── GND                                                 │
-  │   VO  (pin 2) ── +3V3 rail (with C211 47µF + R205 5k1 + D205 LED    │
+  │   VO  (pin 2) ── +3V3 rail (with C211 47µF + R205 5k1 + D205 LED     │
   │                              "+3V3 present" status indicator)        │
   └──────────────────────────────────────────────────────────────────────┘
                               │
@@ -167,28 +237,25 @@ opto-isolated booster-sync input round out the I/O.
                          usb_d+, usb_d-                                      │
                               │                                              │
                               ▼                                              │
-                       ┌─────────────────────────────────────┐               │
-                       │       CH340C  USB↔Serial (U106)     │               │
-                       │                                     │               │
-                       │  VCC  (16) ── +3V3                  │               │
-                       │  V3   (4)  ── +3V3 (internal LDO    │               │
-                       │              not used; cap C118     │               │
-                       │              on V3 to GND for       │               │
-                       │              stability — present)   │               │
-                       │  GND  (1)  ── GND                   │               │
-                       │  UD+  (5)  ── usb_d+                │               │
-                       │  UD-  (6)  ── usb_d-                │               │
-                       │  TXD  (2)  ── txd ── R120 470Ω ─── USB_RX (ESP32 RX0/IO3)
-                       │  RXD  (3)  ── rxd ── R121 470Ω ─── USB_TX (ESP32 TX0/IO1)
-                       │  ~DTR (13) ── DTR ── Q101 (auto-reset/boot, §6)
-                       │  ~RTS (14) ── RTS ── Q101 (auto-reset/boot, §6)
-                       │  ~CTS,~DCD,~RI,~DSR (9–12) — unused                 │
-                       │  R232 (15) ── (config; tied via 22k pull, see       │
-                       │                schematic for exact strap)           │
-                       │  NC   (7,8) — no connect                            │
-                       │                                                     │
-                       │  No dedicated TX/RX activity LEDs on the schematic. │
-                       └─────────────────────────────────────┘
+                       ┌───────────────────────────────────────────────────────────┐
+                       │       CH340C  USB↔Serial (U106)                           │
+                       │                                                           │
+                       │  VCC  (16) ── +3V3                                        │
+                       │  V3   (4)  ── tied to VCC (+3V3); internal LDO not used.  │
+                       │              C120 on V3/VCC to GND for stability.         │
+                       │  GND  (1)  ── GND                                         │
+                       │  UD+  (5)  ── usb_d+                                      │
+                       │  UD-  (6)  ── usb_d-                                      │
+                       │  TXD  (2)  ── txd ── R120 470Ω ── USB_TX net (→ ESP32 RX) │
+                       │  RXD  (3)  ── rxd ── R121 470Ω ── USB_RX net (→ ESP32 TX) │
+                       │  ~DTR (13) ── DTR ── Q101 (auto-reset/boot, §6)           │
+                       │  ~RTS (14) ── RTS ── Q101 (auto-reset/boot, §6)           │
+                       │  ~CTS,~DCD,~RI,~DSR (9–12) — unused                       │
+                       │  R232 (15) ── (config; tied via 22k pull, see schematic)  │
+                       │  NC   (7,8) — no connect                                  │
+                       │                                                           │
+                       │  No dedicated TX/RX activity LEDs on the schematic.       │
+                       └───────────────────────────────────────────────────────────┘
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -220,9 +287,9 @@ opto-isolated booster-sync input round out the I/O.
   │  OUT1   (8)  ── out1b ── J103 pin 1                                  │
   │  GND    (9,15,17) ── GND                                             │
   │  OUT2   (10) ── out2b ── J103 pin 2                                  │
-  │  VM     (11) ── VM rail (with C103 10µF + C104 100n + C107 100n      │
-  │                            decoupling close to chip)                 │
-  │  VCP    (12) ── vcpb ── C107 100n charge-pump bypass cap             │
+  │  VM     (11) ── VM rail (with C103 10µF + C104 100n decoupling)      │
+  │  VCP    (12) ── vcpb ── C107 100n between VM (pin 11) and VCP (pin   │
+  │                  12) — charge-pump bootstrap cap, NOT GND-referenced │
   │  CPH    (13) ── C110 ── CPL  (charge-pump fly cap)                   │
   │  CPL    (14) ──   ┘                                                  │
   │  PMODE  (16) ── GND  (selects PH/EN input mode)                      │
@@ -250,8 +317,9 @@ opto-isolated booster-sync input round out the I/O.
   │  OUT1   (8)  ── out1a ── J101 pin 1                                  │
   │  GND    (9,15,17) ── GND                                             │
   │  OUT2   (10) ── out2a ── J101 pin 2                                  │
-  │  VM     (11) ── VM (with C105 10µF + C106 100n + C108 100n)          │
-  │  VCP    (12) ── C108 charge-pump bypass                              │
+  │  VM     (11) ── VM (with C105 10µF + C106 100n decoupling)           │
+  │  VCP    (12) ── vcpa ── C108 100n between VM (pin 11) and VCP (pin   │
+  │                  12) — charge-pump bootstrap cap, NOT GND-referenced │
   │  CPH    (13) ── C111 ── CPL (charge-pump fly cap, 22n)               │
   │  CPL    (14) ──   ┘                                                  │
   │  PMODE  (16) ── GND                                                  │
@@ -282,11 +350,11 @@ opto-isolated booster-sync input round out the I/O.
   │                                                                      │
   │  Forward conduction path (Booster-D positive vs. Booster-C):         │
   │                                                                      │
-  │    J110.2 (B-D, +) ── R115 1k ──┬── opto_anode ── TLP2361 pin 1 (A) ┐│
-  │                                  │                                    ││
-  │                                  └──── D106 ─────┐  TLP2361 pin 3 (K)││
-  │                                       (reverse                       ││
-  │                                        protect)  └── Booster-C ◄─────┘│
+  │    J110.2 (B-D,+) ── R115 1k ─┬─ opto_anode ─ TLP2361 pin 1 (A)─┐    │
+  │                                │                                  │  │
+  │                                └─── D106 ────┐  TLP2361 pin 3 (K)│   │
+  │                                    (reverse   │                   │  │
+  │                                     protect)  └── Booster-C ◄────┘   │
   │                                                                      │
   │  D106 sits in parallel with the opto LED, cathode toward opto_anode  │
   │  and anode toward Booster-C, clamping reverse voltage on the LED if  │
@@ -321,10 +389,15 @@ opto-isolated booster-sync input round out the I/O.
     "IO0_boot_option / ph/in2a". This means the IO0 boot strap and the
     MAIN driver's direction-2 input share a wire — see the IO0 strap
     note in §4.
+  - Q101 pins 3 and 6 also appear on the reset_n net (with SW101, R103,
+    C109, J108 pin 3, U103 pin 3). This is consistent with the expected
+    EN/IO0 auto-reset topology but does not prove the exact per-unit
+    mapping due to the multi-unit pin extraction ambiguity noted above.
 
   Discrete support around the circuit:
-  - reset_n: SW101 push-button to GND (manual reset), R103 5k1 pull-up
-    to +3V3, C109 100n debounce, plus J108 pin 3 (Arduino RESET header)
+  - reset_n: SW101 push-button to GND (manual reset), R103 13k3 pull-up
+    to +3V3, C109 2.2µF EN timing / hold-up cap, plus J108 pin 3
+    (Arduino RESET header)
   - IO0_boot_option: ESP32 internal strap, optional Q101 pulldown via
     DTR/RTS sequencing (no standalone BOOT button on this revision)
 
@@ -420,19 +493,21 @@ opto-isolated booster-sync input round out the I/O.
    Pin 4 ── d4
    Pin 5 ── d3        (= pwm_c, ESP32 IO26)
    Pin 6 ── d2
-   Pin 7 ── d1        (= USB_TX path; series R120 to CH340 RXD,
+   Pin 7 ── d1        (= USB_TX net; series R120 to CH340C TXD pin 2,
                        so this pin shares with the USB-serial bridge)
-   Pin 8 ── d0        (= USB_RX path; series R121 to CH340 TXD)
+   Pin 8 ── d0        (= USB_RX net; series R121 to CH340C RXD pin 3)
 
   ──────────────────────────────────────────
   J112 — Analog header (6-pin)
   ──────────────────────────────────────────
    Pin 1 ── a0  ── via R116 22k bias to +3V3 ── ESP32 SENSOR_VP (pin 4)
+                   (also labeled sen_c on schematic)
    Pin 2 ── a1  ── via R117 22k bias to +3V3 ── ESP32 SENSOR_VN (pin 5)
+                   (also labeled sen_d on schematic)
    Pin 3 ── a2  (broken out to header; routing per schematic)
    Pin 4 ── a3
-   Pin 5 ── a4  (= ESP32 IO18)
-   Pin 6 ── a5  (= ESP32 IO17)
+   Pin 5 ── a4  (= ESP32 IO18, also labeled fault_n_c)
+   Pin 6 ── a5  (= ESP32 IO17, also labeled fault_n_d)
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -480,14 +555,14 @@ opto-isolated booster-sync input round out the I/O.
 ═══════════════════════════════════════════════════════════════════════════════════
 
   - SW101 (push button, 45°): one terminal to reset_n, other to GND.
-    R103 5k1 pulls reset_n HIGH to +3V3; C109 100n provides debounce.
+    R103 13k3 pulls reset_n HIGH to +3V3; C109 2.2µF EN timing cap.
   - D101 + D102 (yellow 0603 LEDs, antiparallel) — direction indicator
     across U102 out1a/out2a, in series with R101 (22k).
   - D103 + D104 (yellow 0603 LEDs, antiparallel) — direction indicator
     across U101 out1b/out2b, in series with R102 (22k).
   - D105 (blue 0603 LED) + R112 (3k3) — ESP32 user LED, driven by
     GPIO d7 (net "esp_led"). Not a power-on indicator.
-  - D202 (green 0603 LED) + R204 5k1 — "+5V present" indicator (power.kicad_sch)
+  - D202 (green 0603 LED) + R204 13k3 — "+5V present" indicator (power.kicad_sch)
   - D205 (green 0603 LED) + R205 5k1 — "+3V3 present" indicator (power.kicad_sch)
   - No CH340C TX/RX activity LEDs are present on the schematic.
 
@@ -548,8 +623,9 @@ opto-isolated booster-sync input round out the I/O.
   R116,R117  22k                     ADC bias on a0/a1 (SENSOR_VP/VN)
   R120,R121  470Ω                    UART series resistors USB↔ESP32
   R201       100k                    Q201 gate pull-up
-  R202,R203  22k / 13k3              Buck FB divider
-  R204,R205  5k1                     Status-LED current limit
+  R202,R203  100k / 13k3             Buck FB divider
+  R204       13k3                    D202 "+5V present" LED current limit
+  R205       5k1                     D205 "+3V3 present" LED current limit
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
